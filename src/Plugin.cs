@@ -35,6 +35,22 @@ namespace ClickCircle
             (mode == StampMode.Picking || mode == StampMode.OcrPicking); } }
         public bool IsOcrPicking { get { return mode == StampMode.OcrPicking && !unloading; } }
 
+        /// <summary>当前模式对应的页面光标：取字是文本光标，框选与放椭圆是十字光标。</summary>
+        public int CurrentCursorId
+        {
+            get
+            {
+                if (unloading) return ModeCursor.Arrow;
+                switch (mode)
+                {
+                    case StampMode.Picking: return ModeCursor.Picking;
+                    case StampMode.OcrPicking: return ModeCursor.Region;
+                    case StampMode.Stamping: return ModeCursor.Stamping;
+                    default: return ModeCursor.Arrow;
+                }
+            }
+        }
+
         public Plugin()
         {
             dataDirectory = FindDataDirectory();
@@ -171,7 +187,7 @@ namespace ClickCircle
         public Guid _GUID { get { return new Guid("445F9883-A182-4A3F-A4E3-3FCA78F314EC"); } }
         public string Name { get { return "取字连续圈注"; } }
         public string CopyrightInfo { get { return "ClickCircle 2026"; } }
-        public uint version { get { return (1U << 16) | (6U << 8); } }
+        public uint version { get { return (1U << 16) | (6U << 8) | 1U; } }
         public uint VendorID { get { return 0; } }
         public string Description { get { return "取文字后，以固定尺寸连续添加红色椭圆标注。"; } }
         public string LegalInfo { get { return "Local annotation tool."; } }
@@ -407,6 +423,20 @@ namespace ClickCircle
             Panel.SetMode(next == StampMode.Picking || next == StampMode.OcrPicking ? "picking" :
                 next == StampMode.Stamping ? "stamping" : "paused",
                 status ?? (next == StampMode.OcrPicking ? "请框选要识别的区域" : null));
+            ApplyModeCursor();
+        }
+
+        /// <summary>把当前模式的光标写到活动文档的页面视图；切换模式后立即生效。</summary>
+        private void ApplyModeCursor()
+        {
+            if (unloading || Instance == null || tool == null) return;
+            try
+            {
+                IPXV_Document document = ActiveDocument();
+                if (document == null || document.ActiveView == null) return;
+                tool.ApplyModeCursor(document.ActiveView.PagesView);
+            }
+            catch (Exception exception) { Log("Cursor " + exception.Message); }
         }
 
         public void OnToolActivated(IPXV_Document document)

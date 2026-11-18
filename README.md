@@ -1,4 +1,4 @@
-# PDF-XChange 取字连续圈注（ClickCircle 1.6.0）
+# PDF-XChange 取字连续圈注（ClickCircle 1.6.1）
 
 原生 `.pvp` 入口 + C# 工具，在便携版 PDF-XChange Editor 10.8.4 / 11.0.1 x64 中加载运行；使用编辑器标准的 `/Circle` 椭圆标注与自带撤销、保存流程。详细测试记录见 `VALIDATION.md`。
 
@@ -12,6 +12,7 @@
 - **主题历史**：面板底部列出用过的主题，带搜索框与固定（星标）列，点某一行即可把它取回主题并继续标注；最近 50 个主题、最多固定 50 个，固定项排在前面。右键完成取字、成功放圈或显式确认校对结果时记入历史；取字过程中累积的中间主题不记入。
 - **连续圈注**：每次点击以鼠标位置为中心放一个椭圆，新椭圆自动保持选中（带缩放手柄与旋转柄），右侧属性面板立即显示它的主题、颜色、尺寸和不透明度；继续点击则选中转到最新的那个。默认纸面尺寸 1.5 × 1.2 mm，可在面板改宽高（只影响后续标注，自动记忆）。填充 RGB 239/83/80，边框 RGB 211/47/47、实线 0.2 pt，不透明度 60%。主题写入标注 Subject，页面不额外绘制文字。
 - **快捷键**：默认 `Ctrl+Alt+P`，等同点“取文字”，可改成任意组合键甚至单键（例如 `F9`、`A`）。只在本编辑器是前台窗口、且焦点落在页面画布或面板空白处时响应；焦点在面板输入框、编辑器查找框、另存为等对话框、标注文字编辑区时一律不拦截，其他程序更不受影响。实现只用低级键盘钩子（`WH_KEYBOARD_LL`），不再注册全局热键；钩子装不上时面板状态行会给出原因，快捷键不可用而其他功能照常。
+- **鼠标光标**：取字状态用文本光标（I 形），去点图纸上的编号；框选与连续圈注用十字光标，方便对准位置。切换状态时光标立即变化，不必先移动鼠标；按住左键拖框期间始终是十字。
 - **暂停与撤销**：`Esc` 或面板“暂停”放弃本次取字并停止；取字时右键完成取字、进入圈注，“继续标注”恢复；切换文档自动暂停；每次撤销只移除一个椭圆，保存重开后仍是可编辑标注。
 - **取字来源**：普通“取文字”优先直接读文字层和 SHX 原文；无原文的框选自动进入 OCR。已有原文但内容错误、乱码或漏字时，可主动点“区域识别”强制识别原图，不混入不完整的原文结果。
 
@@ -86,6 +87,7 @@ D:\PDF-XChangeEditorPlusPortable\App\PDF-XChange\PDF Editor\Plugins.x64
 | `OcrService.cs` | 本地识别辅助进程、取消和超时、结果协议与片段排序 |
 | `OcrReviewDialog.cs` | 区域预览、语言选择、旋转重识别、文字校对与明确确认 |
 | `StampPanel.cs` | 面板与设置（含分隔符、快捷键录入） |
+| `ModeCursor.cs` | 各状态的鼠标光标常量：取字用文本光标，框选与放椭圆用十字光标 |
 | `HotkeyBinding.cs` | 快捷键解析、显示、持久化 |
 | `HotkeyScope.cs` | 触发范围判定（前台、模态、原生输入框、页面焦点） |
 | `HotkeyService.cs` | 低级键盘钩子、按键去重、延时复核、隐藏消息窗口 |
@@ -95,8 +97,8 @@ D:\PDF-XChangeEditorPlusPortable\App\PDF-XChange\PDF Editor\Plugins.x64
 ## 打包
 
 ```powershell
-.\package.ps1                     # 默认 1.6.0
-.\package.ps1 -Version 1.6.0      # 指定版本
+.\package.ps1                     # 默认 1.6.1
+.\package.ps1 -Version 1.6.1      # 指定版本
 ```
 
 按白名单打包三个发行文件、源码、脚本、说明、测试与样例，产出 `release\ClickCircle-<版本>-x64.zip`；同名包已存在时拒绝覆盖。可加 `-IncludeDrawingDemo` 把照明图演示 PDF 一起打进去。
@@ -113,7 +115,7 @@ python .\tests\verify_output.py .\output\ClickCircle_acceptance_result.pdf --exp
 
 SHX 回归样例为 `tests\ClickCircle_shx_selection.pdf`：4 种旋转，包含只有矢量轮廓的 SHX 编号、重复编号、带空格与斜杠的文字、原生文字、同位置双重表示与应忽略的普通批注。`create_shx_fixture.py` 需要 `fonttools`、`reportlab`、`pypdf` 与 Windows Arial 字体，均为测试依赖，插件不依赖 Python 或外部识别服务。
 
-`build.ps1 -RunTests` 运行 9 个测试程序共 766 项：TextPicker 15、HotkeyBinding 92、HotkeyPanel 35、HotkeyService 145、RegionPicker 71、SeparatorPanel 111、ShxText 91、OCR 142、HistoryPreference 64。还可在单独的编辑器副本中运行只读 SDK 验收：
+`build.ps1 -RunTests` 运行 10 个测试程序共 774 项：TextPicker 15、HotkeyBinding 92、HotkeyPanel 35、HotkeyService 145、RegionPicker 71、SeparatorPanel 111、ShxText 91、OCR 142、HistoryPreference 64、Cursor 8。还可在单独的编辑器副本中运行只读 SDK 验收：
 
 ```powershell
 .\tests\run-shx-host-tests.ps1 -EditorDirectory 'C:\测试副本\PDF Editor' -DrawingPath 'C:\图纸.pdf'

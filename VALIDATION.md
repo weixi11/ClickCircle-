@@ -1,4 +1,18 @@
-# 取字连续圈注 验收记录（1.6.0）
+# 取字连续圈注 验收记录（1.6.1）
+
+日期：2026-11-18。宿主：便携版 PDF-XChange Editor 11.0.1 x64（`D:\PDF-XChangeEditorPlusPortable\App\PDF-XChange\PDF Editor`）。
+
+## 本轮（1.6.1）：取字与标注使用不同鼠标光标
+
+- 新增 `src\ModeCursor.cs`，把光标按状态集中成常量：取字 `UIX_StdCursor_IBeam`（文本光标，去点一行字），框选拖框 `Cross`、区域识别等待框选 `Cross`、连续圈注 `Cross`（定位置/拉范围），非取字非标注交回 `Arrow`。
+- `CircleTool` 的 `WM_MOUSEMOVE`（`0x0200`）不再写死十字，改为按状态取 `owner.CurrentCursorId`；按住左键拖框期间固定用 `ModeCursor.Dragging`，松开后回到当前状态光标。
+- 切换状态立刻生效：`Plugin.SetMode` 末尾调用新增的 `ApplyModeCursor()`，把光标直接写到活动文档的 `ActiveView.PagesView`，不必先移动鼠标才看到变化；取不到活动文档或写入失败只记 `Cursor <原因>` 日志，不影响模式切换。
+- `Plugin.CurrentCursorId` 为唯一映射入口；`unloading` 期间返回箭头，避免卸载时再去碰视图。
+- 构建与测试：新增 `tests\CursorTests.cs`（8 项：取字≠标注、取字≠区域框选、各状态的具体 enum、非活动状态不得停在取字/标注光标），`build.ps1 -RunTests` 10 个程序共 774 项通过（原 766 + 8）。`version` 改为 1.6.1，`package.ps1` 默认版本改为 1.6.1，打包清单加入 `src\ModeCursor.cs` 与 `tests\CursorTests.cs`（57 条目）。
+- 装机：本轮开始时编辑器正在编辑 `PODIUM Lighting Control Zone Schedule-0001`（标题带未保存星号），`install.ps1` 按既有规则拒绝在进程运行期间改动文件，未结束任何进程。因此 1.6.1 只完成构建、测试与打包，装机待关闭该文档后执行 `install.ps1`。
+- 未覆盖：光标形状本身属于视觉表现，自动化只断言映射关系；取字时看到 I 形、右键完成后变十字的实际效果需人工确认。
+
+## 早前（1.6.0）：主题历史与连续取字合并
 
 日期：2026-11-18（1.6.0 合并，1.5.0 发布）。宿主：便携版 PDF-XChange Editor 11.0.1 x64（`D:\PDF-XChangeEditorPlusPortable\App\PDF-XChange\PDF Editor`）。1.6.0 是把两条并行开发线合成一个版本：本地线（1.4.0 + 主题历史 + OCR 语言偏好）与 1.5.0 发布线（连续取字 + 右键完成）。下文保留此前版本的验收历史。
 

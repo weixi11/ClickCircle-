@@ -69,6 +69,13 @@ namespace ClickCircle
 
         public void OnFinalize() { CancelGesture(); }
 
+        /// <summary>模式切换后立刻同步光标，不必等用户先移动鼠标。</summary>
+        public void ApplyModeCursor(IPXV_PagesView view)
+        {
+            if (view == null) return;
+            view.Cursor = pressed ? ModeCursor.Dragging : owner.CurrentCursorId;
+        }
+
         public void OnProcessViewEvent(IPXV_PagesView view, IUIX_Event e)
         {
             try
@@ -112,7 +119,7 @@ namespace ClickCircle
                 }
                 else if (e.Code == 0x0200)
                 {
-                    view.Cursor = (int)UIX_StdCursor.UIX_StdCursor_Cross;
+                    view.Cursor = pressed ? ModeCursor.Dragging : owner.CurrentCursorId;
                     e.Handled = true;
                     if (pressed)
                         UpdateGesture(e.get_Pos());
