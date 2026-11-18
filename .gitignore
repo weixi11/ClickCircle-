@@ -1,0 +1,27 @@
+# ===== 构建中间物 =====
+/obj/
+/build-*/
+/tmp/
+/bin/
+*.user
+*.suo
+
+# ===== 独立编辑器宿主副本（各约 119 MB，由编辑器安装目录提供，不入库）=====
+# 需要验收时用 build.ps1 / tests\*.ps1 的 -EditorDirectory 指向本地安装的 PDF Editor
+/test-host/
+/box-test-host/
+/ocr-lab/
+
+# ===== 运行证据与安装备份（体积大、可重跑生成）=====
+/output/
+/vendor/*/output/
+
+# ===== 打包产物：改由 GitHub Release 附件分发，仓库只留 tag =====
+/release/
+/vendor/*/release/
+
+# ===== 杂项 =====
+*.log
+Thumbs.db
+desktop.ini
+.DS_Store
