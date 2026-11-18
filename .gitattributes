@@ -1,0 +1,9 @@
+* text=auto
+
+# 二进制发行物与样例：禁止换行转换与文本 diff
+*.dll binary
+*.pvp binary
+*.exe binary
+*.zip binary
+*.pdf -text -diff
+*.png binary
