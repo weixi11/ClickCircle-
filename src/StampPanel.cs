@@ -125,10 +125,12 @@ namespace ClickCircle
 
             TableLayoutPanel separatorRow = new TableLayoutPanel();
             separatorRow.Dock = DockStyle.Fill;
-            separatorRow.ColumnCount = 2;
+            separatorRow.ColumnCount = 3;
             separatorRow.RowCount = 1;
             separatorRow.Margin = Padding.Empty;
             separatorRow.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, 72F));
+            // 分隔符输入框给固定宽度，右边的空列吃掉剩余空间，避免下拉框被拉伸成一条长条。
+            separatorRow.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, 150F));
             separatorRow.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100F));
             separatorInput = new ComboBox();
             separatorInput.Name = "Separator";
@@ -154,21 +156,24 @@ namespace ClickCircle
 
             TableLayoutPanel dimensionsRow = new TableLayoutPanel();
             dimensionsRow.Dock = DockStyle.Fill;
-            dimensionsRow.ColumnCount = 4;
+            // 宽/高两个数字框各占固定宽度，中间留空隙，最后用空列把整行收在左边。
+            dimensionsRow.ColumnCount = 6;
             dimensionsRow.RowCount = 1;
             dimensionsRow.Margin = Padding.Empty;
             dimensionsRow.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, 72F));
-            dimensionsRow.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 50F));
-            dimensionsRow.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, 72F));
-            dimensionsRow.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 50F));
+            dimensionsRow.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, 96F));
+            dimensionsRow.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, 16F));
+            dimensionsRow.ColumnStyles.Add(new ColumnStyle(SizeType.AutoSize));
+            dimensionsRow.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, 96F));
+            dimensionsRow.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100F));
             widthInput = MakeDimensionInput("椭圆宽度，毫米", 2);
             heightInput = MakeDimensionInput("椭圆高度，毫米", 3);
-            widthInput.Margin = new Padding(0, 3, 12, 0);
+            widthInput.Margin = new Padding(0, 3, 0, 0);
             heightInput.Margin = new Padding(0, 3, 0, 0);
             dimensionsRow.Controls.Add(MakeLabel("宽 mm", "椭圆宽度"), 0, 0);
             dimensionsRow.Controls.Add(widthInput, 1, 0);
-            dimensionsRow.Controls.Add(MakeLabel("高 mm", "椭圆高度"), 2, 0);
-            dimensionsRow.Controls.Add(heightInput, 3, 0);
+            dimensionsRow.Controls.Add(MakeLabel("高 mm", "椭圆高度"), 3, 0);
+            dimensionsRow.Controls.Add(heightInput, 4, 0);
             layout.Controls.Add(dimensionsRow, 0, 2);
 
             TableLayoutPanel commandsRow = new TableLayoutPanel();
@@ -204,7 +209,7 @@ namespace ClickCircle
             hotkeyRow.Margin = Padding.Empty;
             hotkeyRow.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, 72F));
             hotkeyRow.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100F));
-            hotkeyRow.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, 60F));
+            hotkeyRow.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, 76F));
             hotkeyButton = MakeButton(String.Empty, 8);
             hotkeyButton.Margin = new Padding(0, 3, 8, 3);
             hotkeyButton.Click += delegate { BeginHotkeyCapture(); };
@@ -288,6 +293,60 @@ namespace ClickCircle
             widthInput.ValueChanged += DimensionValueChanged;
             heightInput.ValueChanged += DimensionValueChanged;
             Deactivate += delegate { CancelHotkeyCapture(); };
+
+            // —— 排版收敛 ——
+            // 行高按字体与控件首选高度算：150% 缩放下不会把字挤在 44 像素的固定行里，
+            // 100% 下也不会留出大片空白；标签列统一到最宽的那个标签，四行的输入框左边缘对齐。
+            int labelWidth = Math.Max(
+                TextRenderer.MeasureText("分隔符", Font).Width,
+                Math.Max(TextRenderer.MeasureText("主题历史", Font).Width,
+                    TextRenderer.MeasureText("宽 mm", Font).Width)) + 12;
+            int textRow = PreferredHeight(subjectBox, 24) + 16;
+            int comboTall = PreferredHeight(separatorInput, 24) + 16;
+            int sizeTall = PreferredHeight(widthInput, 24) + 16;
+            int commandTall = PreferredHeight(pickButton, 28) + 14;
+            int hotkeyTall = PreferredHeight(hotkeyButton, 28) + 14;
+            int statusTall = Font.Height + 14;
+
+            layout.RowStyles[0] = new RowStyle(SizeType.Absolute, textRow);
+            layout.RowStyles[1] = new RowStyle(SizeType.Absolute, comboTall);
+            layout.RowStyles[2] = new RowStyle(SizeType.Absolute, sizeTall);
+            layout.RowStyles[3] = new RowStyle(SizeType.Absolute, commandTall);
+            layout.RowStyles[4] = new RowStyle(SizeType.Absolute, hotkeyTall);
+            layout.RowStyles[5] = new RowStyle(SizeType.Absolute, statusTall);
+
+            subjectRow.ColumnStyles[0] = new ColumnStyle(SizeType.Absolute, labelWidth);
+            separatorRow.ColumnStyles[0] = new ColumnStyle(SizeType.Absolute, labelWidth);
+            dimensionsRow.ColumnStyles[0] = new ColumnStyle(SizeType.Absolute, labelWidth);
+            hotkeyRow.ColumnStyles[0] = new ColumnStyle(SizeType.Absolute, labelWidth);
+            searchRow.ColumnStyles[0] = new ColumnStyle(SizeType.Absolute, labelWidth);
+
+            subjectBox.Margin = TopCentered(subjectBox, textRow);
+            separatorInput.Margin = TopCentered(separatorInput, comboTall);
+            widthInput.Margin = TopCentered(widthInput, sizeTall);
+            heightInput.Margin = TopCentered(heightInput, sizeTall);
+            historySearch.Margin = TopCentered(historySearch, PreferredHeight(historySearch, 24) + 16);
+            subjectBox.Dock = DockStyle.Fill;
+            separatorInput.Dock = DockStyle.Fill;
+            widthInput.Dock = DockStyle.Fill;
+            heightInput.Dock = DockStyle.Fill;
+            historySearch.Dock = DockStyle.Fill;
+
+            pickButton.Margin = new Padding(0, 5, 8, 5);
+            ocrButton.Margin = new Padding(0, 5, 8, 5);
+            resumeButton.Margin = new Padding(0, 5, 8, 5);
+            pauseButton.Margin = new Padding(0, 5, 0, 5);
+            hotkeyButton.Margin = new Padding(0, 5, 8, 5);
+            clearHotkeyButton.Margin = new Padding(0, 5, 0, 5);
+            statusLabel.Margin = new Padding(0, 2, 0, 0);
+
+            historyLayout.RowStyles[0] =
+                new RowStyle(SizeType.Absolute, PreferredHeight(historySearch, 24) + 16);
+            historyLayout.RowStyles[2] = new RowStyle(SizeType.Absolute, Font.Height + 10);
+            historyGrid.RowTemplate.Height = Font.Height + 14;
+            historyGrid.ColumnHeadersHeightSizeMode = DataGridViewColumnHeadersHeightSizeMode.EnableResizing;
+            historyGrid.ColumnHeadersHeight = Font.Height + 16;
+
             ApplySettings(settings ?? new PluginSettings());
             UpdateHotkeyButton();
             SetMode("paused", "待取字");
@@ -755,6 +814,22 @@ namespace ClickCircle
         {
             if (handler != null)
                 handler();
+        }
+
+        /// <summary>控件首选高度；布局信息还不完整时回落到给定值。</summary>
+        private static int PreferredHeight(Control control, int fallback)
+        {
+            int height = control.PreferredSize.Height;
+            if (height <= 0) height = control.Height;
+            return height > 0 ? height : fallback;
+        }
+
+        /// <summary>在给定行高里把控件垂直居中：Dock=Fill 加上下相等的边距，净高正好等于首选高度。</summary>
+        private static Padding TopCentered(Control control, int rowHeight)
+        {
+            int preferred = PreferredHeight(control, control.Height);
+            int inset = Math.Max(0, (rowHeight - preferred) / 2);
+            return new Padding(0, inset, 0, inset);
         }
 
         private static Label MakeLabel(string text, string accessibleName)

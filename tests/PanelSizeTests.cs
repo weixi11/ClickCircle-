@@ -102,6 +102,53 @@ internal static class PanelSizeTests
         }
     }
 
+    private static void CheckLayout()
+    {
+        using (StampPanel panel = new StampPanel())
+        {
+            TextBox subject = (TextBox)panel.Controls.Find("Subject", true)[0];
+            ComboBox separator = (ComboBox)panel.Controls.Find("Separator", true)[0];
+            DataGridView grid = (DataGridView)panel.Controls.Find("SubjectHistory", true)[0];
+
+            NumericUpDown[] numbers = new NumericUpDown[2];
+            int found = 0;
+            Collect<NumericUpDown>(panel, ref numbers, ref found);
+            Expect(found == 2, "两个尺寸输入框都在，实际 " + found);
+
+            NumericUpDown width = numbers[0];
+            NumericUpDown height = numbers[1];
+            Expect(width.Width == height.Width, "宽高输入框等宽，实际 " +
+                width.Width + " / " + height.Width);
+            Expect(width.Width <= 140, "尺寸输入框不再拉满整行，实际 " + width.Width);
+            Expect(subject.Width > width.Width * 2, "主题输入框明显宽于尺寸框，实际 " +
+                subject.Width + " vs " + width.Width);
+            Expect(separator.Width >= 100 && separator.Width <= 220,
+                "分隔符下拉框宽度收敛，实际 " + separator.Width);
+            Expect(panel.Controls.Count > 0 && panel.Width >= StampPanel.MinimumPanelWidth,
+                "面板整体不小于下限");
+
+            panel.CreateControl();
+            panel.Show();
+            Application.DoEvents();
+            Expect(grid.Height >= 160, "历史表格在默认尺寸下有可用高度，实际 " + grid.Height);
+            Expect(grid.RowTemplate.Height >= panel.Font.Height + 10,
+                "表格行高跟随字号，实际 " + grid.RowTemplate.Height +
+                " 字体高 " + panel.Font.Height);
+            panel.Hide();
+        }
+    }
+
+    private static void Collect<T>(Control root, ref T[] slots, ref int count) where T : Control
+    {
+        foreach (Control child in root.Controls)
+        {
+            T match = child as T;
+            if (match != null && count < slots.Length)
+                slots[count++] = match;
+            Collect<T>(child, ref slots, ref count);
+        }
+    }
+
     [STAThread]
     public static int Main()
     {
@@ -110,6 +157,7 @@ internal static class PanelSizeTests
             CheckDefaults();
             CheckApplySettings();
             CheckSettingsRoundTrip();
+            CheckLayout();
             Console.WriteLine("PanelSize: " + checkedCases + " cases passed.");
             return 0;
         }
