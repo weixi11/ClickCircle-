@@ -9,7 +9,7 @@
 - 切换状态立刻生效：`Plugin.SetMode` 末尾调用新增的 `ApplyModeCursor()`，把光标直接写到活动文档的 `ActiveView.PagesView`，不必先移动鼠标才看到变化；取不到活动文档或写入失败只记 `Cursor <原因>` 日志，不影响模式切换。
 - `Plugin.CurrentCursorId` 为唯一映射入口；`unloading` 期间返回箭头，避免卸载时再去碰视图。
 - 构建与测试：新增 `tests\CursorTests.cs`（8 项：取字≠标注、取字≠区域框选、各状态的具体 enum、非活动状态不得停在取字/标注光标），`build.ps1 -RunTests` 10 个程序共 774 项通过（原 766 + 8）。`version` 改为 1.6.1，`package.ps1` 默认版本改为 1.6.1，打包清单加入 `src\ModeCursor.cs` 与 `tests\CursorTests.cs`（57 条目）。
-- 装机：本轮开始时编辑器正在编辑 `PODIUM Lighting Control Zone Schedule-0001`（标题带未保存星号），`install.ps1` 按既有规则拒绝在进程运行期间改动文件，未结束任何进程。因此 1.6.1 只完成构建、测试与打包，装机待关闭该文档后执行 `install.ps1`。
+- 装机：首次尝试时编辑器正在编辑 `PODIUM Lighting Control Zone Schedule-0001`（标题带未保存星号），`install.ps1` 按既有规则拒绝在进程运行期间改动文件，未结束任何进程；用户保存并关闭后于 2026-11-19 00:27:45 完成安装，旧 1.6.0 三文件、清单、设置与日志备份在 `output\install-backup-1.6.0-20261118-214641`。`Plugins.x64` 三者 SHA-256 与 `dist` 一致：Core `EEFF0DBF5D66287BA5FC89979F0E76F4E2193200EC18692F973D6D4787BF725A`、pvp `CF6A1022E833D4F6CF365F15CD3EF11210F2AE4928689A58D926C1F6C75C716D`、PDFXEdit.dll `C5E27F9CADEE3B8B2F9B91414386CACE72B5EBE7FB420AA1F585AD27FD4A0F0E`。重开编辑器日志 `00:27:54.305 Hotkey Q via hook`、`00:27:54.305 Init OK`，自定义快捷键 `Q` 与设置随升级保留。
 - 未覆盖：光标形状本身属于视觉表现，自动化只断言映射关系；取字时看到 I 形、右键完成后变十字的实际效果需人工确认。
 
 ## 早前（1.6.0）：主题历史与连续取字合并
