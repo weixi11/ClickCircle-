@@ -307,6 +307,40 @@ namespace ClickCircle
             RememberCurrentSubject();
         }
 
+        /// <summary>已取到、可随分隔符重组的文字片段数量；手动改过主题后为 0。</summary>
+        public int PickedFragmentCount
+        {
+            get { return pickedFragments == null ? 0 : pickedFragments.Length; }
+        }
+
+        /// <summary>开始新一轮取字：主题文本保留，但下一次取字重新开始累积。</summary>
+        public void ResetPickedFragments()
+        {
+            pickedFragments = null;
+        }
+
+        /// <summary>
+        /// 把本次取到的片段追加到已取片段后面重新合并。新一轮取字的第一次取字直接替换旧主题。
+        /// 全部为空时不改动主题并返回 false。
+        /// </summary>
+        public bool AppendPickedFragments(IList<string> fragments)
+        {
+            if (fragments == null)
+                throw new ArgumentNullException("fragments");
+            List<string> values = new List<string>();
+            foreach (string fragment in fragments)
+                if (!String.IsNullOrWhiteSpace(fragment))
+                    values.Add(fragment);
+            if (values.Count == 0)
+                return false;
+            List<string> merged = pickedFragments == null
+                ? new List<string>() : new List<string>(pickedFragments);
+            merged.AddRange(values);
+            pickedFragments = merged.ToArray();
+            RecomposeSubject();
+            return true;
+        }
+
         public string OcrLanguage
         {
             get { return ocrLanguage; }

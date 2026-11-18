@@ -33,6 +33,7 @@ namespace ClickCircle
         private RegionPickResult selection;
         private IUIX_Brush selectionBrush;
         private IUIX_Pen selectionPen;
+        private DateTime contextMenuBlockedUntilUtc;
 
         public CircleTool(Plugin owner)
         {
@@ -77,6 +78,21 @@ namespace ClickCircle
                     CancelGesture();
                     e.Handled = true;
                     owner.Pause();
+                    return;
+                }
+                // 取字时右键完成：保留已取片段，切到连续圈注；并短暂吞掉这次右键菜单。
+                if ((e.Code == 0x0205 || e.Code == 0x007B) &&
+                    DateTime.UtcNow < contextMenuBlockedUntilUtc)
+                {
+                    e.Handled = true;
+                    return;
+                }
+                if (e.Code == 0x0204 && owner.IsPicking && !owner.IsOcrPicking)
+                {
+                    e.Handled = true;
+                    contextMenuBlockedUntilUtc = DateTime.UtcNow.AddMilliseconds(750);
+                    CancelGesture();
+                    owner.FinishPicking();
                     return;
                 }
                 if (e.Code == (int)UIX_EventCodes.e_MouseCaptureLost || e.Code == 0x0215 ||

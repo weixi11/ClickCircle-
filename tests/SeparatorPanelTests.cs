@@ -65,6 +65,24 @@ internal static class SeparatorPanelTests
             ExpectSubject(panel, "LI-156x8rows", "empty selection preserves previous subject");
             panel.SetPickedFragments(new string[] { "\u5e94\u6025\u7167\u660e", "\u4e00\u5c42" });
             ExpectSubject(panel, "\u5e94\u6025\u7167\u660e / \u4e00\u5c42", "unicode fragments preserved");
+
+            panel.Separator = "/";
+            panel.ResetPickedFragments();
+            Expect(panel.PickedFragmentCount == 0, "reset clears fragment count");
+            Expect(panel.AppendPickedFragments(new string[] { "A", "B" }), "append accepts fragments");
+            ExpectSubject(panel, "A/B", "first append replaces the previous subject");
+            Expect(panel.PickedFragmentCount == 2, "append counts all fragments");
+            Expect(!panel.AppendPickedFragments(new string[] { "", " " }), "blank append is ignored");
+            ExpectSubject(panel, "A/B", "blank append keeps the subject");
+            Expect(panel.AppendPickedFragments(new string[] { "C" }), "second append is accepted");
+            ExpectSubject(panel, "A/B/C", "second append is joined with the separator");
+            Expect(panel.PickedFragmentCount == 3, "append grows the fragment count");
+            panel.Separator = "-";
+            ExpectSubject(panel, "A-B-C", "appended fragments still follow separator changes");
+            panel.Subject = "MANUAL";
+            Expect(panel.PickedFragmentCount == 0, "manual edit clears the fragment count");
+            Expect(panel.AppendPickedFragments(new string[] { "D" }), "append after manual edit is accepted");
+            ExpectSubject(panel, "D", "append after manual edit starts a new series");
         }
     }
 
