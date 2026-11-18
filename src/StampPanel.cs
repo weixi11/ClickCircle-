@@ -48,6 +48,17 @@ namespace ClickCircle
         public event Action HistoryChanged;
         public event Action OcrLanguageChanged;
 
+        /// <summary>用户拖动窗口边缘改尺寸后触发，用于记住面板大小。</summary>
+        public event Action PanelSizeChanged;
+
+        /// <summary>默认窗口客户区尺寸。</summary>
+        public const int DefaultPanelWidth = 480;
+        public const int DefaultPanelHeight = 566;
+
+        /// <summary>最小客户区尺寸：标题、取字行、分隔符、尺寸、按钮、快捷键、状态行与历史表格都要露出来。</summary>
+        public const int MinimumPanelWidth = 440;
+        public const int MinimumPanelHeight = 380;
+
         public StampPanel() : this(new PluginSettings())
         {
         }
@@ -56,8 +67,12 @@ namespace ClickCircle
         {
             Text = "取字连续圈注";
             AutoScaleMode = AutoScaleMode.None;
-            ClientSize = new Size(480, 566);
-            FormBorderStyle = FormBorderStyle.FixedToolWindow;
+            ClientSize = new Size(DefaultPanelWidth, DefaultPanelHeight);
+            FormBorderStyle = FormBorderStyle.SizableToolWindow;
+            // MinimumSize 按窗口尺寸算：先按常见工具窗口边框（左右各 16、标题加边框 48）估一份，
+            // OnLoad 里用真实边框再校正一次，保证客户区不小于 MinimumPanelWidth × MinimumPanelHeight。
+            MinimumSize = new Size(MinimumPanelWidth + 32, MinimumPanelHeight + 48);
+            MaximumSize = new Size(4000, 4000);
             MaximizeBox = false;
             MinimizeBox = false;
             ShowInTaskbar = false;
@@ -66,6 +81,8 @@ namespace ClickCircle
             KeyPreview = true;
             Font = new Font("Microsoft YaHei UI", 10F, FontStyle.Regular);
             Padding = new Padding(12);
+            // 只在用户拖完窗口边缘时记一次，拖动过程中不反复写设置文件。
+            ResizeEnd += delegate { if (!applyingSettings) Raise(PanelSizeChanged); };
 
             TableLayoutPanel layout = new TableLayoutPanel();
             layout.Dock = DockStyle.Fill;
@@ -216,7 +233,7 @@ namespace ClickCircle
             TableLayoutPanel searchRow = new TableLayoutPanel {
                 Dock = DockStyle.Fill, ColumnCount = 2, RowCount = 1, Margin = Padding.Empty
             };
-            searchRow.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, 84F));
+            searchRow.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, 110F));
             searchRow.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100F));
             historySearch = new TextBox {
                 Name = "HistorySearch", AccessibleName = "搜索主题历史",
@@ -239,7 +256,7 @@ namespace ClickCircle
             };
             historyGrid.RowTemplate.Height = 30;
             historyGrid.Columns.Add(new DataGridViewCheckBoxColumn {
-                Name = "Pinned", HeaderText = "固定", Width = 54,
+                Name = "Pinned", HeaderText = "固定", Width = 64,
                 AutoSizeMode = DataGridViewAutoSizeColumnMode.None,
                 SortMode = DataGridViewColumnSortMode.NotSortable
             });
@@ -526,6 +543,9 @@ namespace ClickCircle
                 OcrLanguage = settings.OcrLanguage;
                 history = new SubjectHistory(settings.SubjectHistory);
                 RefreshHistory();
+                ClientSize = new Size(
+                    PluginSettings.ClampPanelWidth(settings.PanelWidth, DefaultPanelWidth),
+                    PluginSettings.ClampPanelHeight(settings.PanelHeight, DefaultPanelHeight));
             }
             finally
             {
@@ -543,7 +563,9 @@ namespace ClickCircle
                 PickHotkey = hotkey.ToStorage(),
                 Separator = Separator,
                 OcrLanguage = OcrLanguage,
-                SubjectHistory = history.Export()
+                SubjectHistory = history.Export(),
+                PanelWidth = ClientSize.Width,
+                PanelHeight = ClientSize.Height
             };
         }
 
@@ -707,6 +729,22 @@ namespace ClickCircle
             pickButton.Enabled = true;
         }
 
+        protected override void OnSizeChanged(EventArgs e)
+        {
+            base.OnSizeChanged(e);
+        }
+
+        protected override void OnLoad(EventArgs e)
+        {
+            base.OnLoad(e);
+            // MinimumSize 用的是窗口尺寸，客户区必须留出 MinimumPanelWidth × MinimumPanelHeight：
+            // 否则拖到最小时主题历史表格只剩一条缝。
+            Size border = new Size(Width - ClientSize.Width, Height - ClientSize.Height);
+            if (border.Width <= 0 || border.Height <= 0)
+                border = new Size(16, 39);
+            MinimumSize = new Size(MinimumPanelWidth + border.Width, MinimumPanelHeight + border.Height);
+        }
+
         private void DimensionValueChanged(object sender, EventArgs e)
         {
             if (!applyingSettings)
@@ -767,6 +805,8 @@ namespace ClickCircle
             Separator = "/";
             OcrLanguage = String.Empty;
             SubjectHistory = new List<SubjectHistoryEntry>();
+            PanelWidth = StampPanel.DefaultPanelWidth;
+            PanelHeight = StampPanel.DefaultPanelHeight;
         }
 
         public double WidthMm { get; set; }
@@ -777,6 +817,12 @@ namespace ClickCircle
         public string Separator { get; set; }
         public string OcrLanguage { get; set; }
         public List<SubjectHistoryEntry> SubjectHistory { get; set; }
+
+        /// <summary>面板客户区宽度；重启后按它恢复窗口大小。</summary>
+        public int PanelWidth { get; set; }
+
+        /// <summary>面板客户区高度；重启后按它恢复窗口大小。</summary>
+        public int PanelHeight { get; set; }
 
         public static PluginSettings Load(string path)
         {
@@ -801,6 +847,8 @@ namespace ClickCircle
                         settings.Separator = "/";
                     settings.OcrLanguage = OcrService.NormalizeLanguagePreference(settings.OcrLanguage);
                     settings.SubjectHistory = new SubjectHistory(settings.SubjectHistory).Export();
+                    settings.PanelWidth = ClampPanelWidth(settings.PanelWidth, StampPanel.DefaultPanelWidth);
+                    settings.PanelHeight = ClampPanelHeight(settings.PanelHeight, StampPanel.DefaultPanelHeight);
                     return settings;
                 }
             }
@@ -823,7 +871,9 @@ namespace ClickCircle
                     PickHotkey = HotkeyBinding.ParseOrDefault(PickHotkey).ToStorage(),
                     Separator = Separator ?? "/",
                     OcrLanguage = OcrService.NormalizeLanguagePreference(OcrLanguage),
-                    SubjectHistory = new SubjectHistory(SubjectHistory).Export()
+                    SubjectHistory = new SubjectHistory(SubjectHistory).Export(),
+                    PanelWidth = ClampPanelWidth(PanelWidth, StampPanel.DefaultPanelWidth),
+                    PanelHeight = ClampPanelHeight(PanelHeight, StampPanel.DefaultPanelHeight)
                 };
                 XmlWriterSettings writerSettings = new XmlWriterSettings {
                     Indent = true,
@@ -854,6 +904,20 @@ namespace ClickCircle
             if (Double.IsNaN(value) || Double.IsInfinity(value))
                 value = fallback;
             return Decimal.Round((decimal)Math.Min(100, Math.Max(0.1, value)), 2);
+        }
+
+        /// <summary>窗口宽度：非正数回落到默认值，然后夹在最小与 4000 之间。</summary>
+        internal static int ClampPanelWidth(int value, int fallback)
+        {
+            if (value <= 0) value = fallback;
+            return Math.Min(4000, Math.Max(StampPanel.MinimumPanelWidth, value));
+        }
+
+        /// <summary>窗口高度：非正数回落到默认值，然后夹在最小与 4000 之间。</summary>
+        internal static int ClampPanelHeight(int value, int fallback)
+        {
+            if (value <= 0) value = fallback;
+            return Math.Min(4000, Math.Max(StampPanel.MinimumPanelHeight, value));
         }
     }
 }

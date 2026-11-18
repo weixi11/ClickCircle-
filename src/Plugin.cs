@@ -190,7 +190,7 @@ namespace ClickCircle
         public Guid _GUID { get { return new Guid("445F9883-A182-4A3F-A4E3-3FCA78F314EC"); } }
         public string Name { get { return "取字连续圈注"; } }
         public string CopyrightInfo { get { return "ClickCircle 2026"; } }
-        public uint version { get { return (1U << 16) | (6U << 8) | 2U; } }
+        public uint version { get { return (1U << 16) | (6U << 8) | 3U; } }
         public uint VendorID { get { return 0; } }
         public string Description { get { return "取文字后，以固定尺寸连续添加红色椭圆标注。"; } }
         public string LegalInfo { get { return "Local annotation tool."; } }
@@ -210,6 +210,7 @@ namespace ClickCircle
             Panel.SeparatorChanged += SaveSettings;
             Panel.HistoryChanged += SaveSettings;
             Panel.OcrLanguageChanged += SaveSettings;
+            Panel.PanelSizeChanged += SaveSettings;
             Panel.HotkeyChanged += OnHotkeyChanged;
             Panel.HotkeyCaptureStarted += OnHotkeyCaptureStarted;
             Panel.HotkeyCaptureStopped += OnHotkeyCaptureStopped;

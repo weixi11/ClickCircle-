@@ -1,4 +1,19 @@
-# 取字连续圈注 验收记录（1.6.2）
+# 取字连续圈注 验收记录（1.6.3）
+
+日期：2026-11-19。宿主：便携版 PDF-XChange Editor 11.0.1 x64（`D:\PDF-XChangeEditorPlusPortable\App\PDF-XChange\PDF Editor`）。
+
+## 本轮（1.6.3）：面板可缩放并记住大小
+
+- 面板从 `FixedToolWindow` 改为 `SizableToolWindow`：可拖动边缘缩放，仍保持工具窗口外观（无最大/最小化按钮、不进任务栏）。默认客户区仍为 480 × 566，主题历史行沿用 `Percent 100` 行样式，放大时优先长高、变宽。
+- 客户区下限 440 × 380（`MinimumPanelWidth` / `MinimumPanelHeight`）；`MinimumSize` 是窗口尺寸，`OnLoad` 里用真实工具窗口边框（`Width - ClientSize.Width`）补正，保证拖到最小时主题历史表格仍有可用高度而不是一条缝。
+- 大小持久化：`PluginSettings` 新增 `PanelWidth` / `PanelHeight`（客户区像素），`ApplySettings` 恢复、`GetSettings` 回写；`Load` / `Save` 都做 `ClampPanelWidth/ClampPanelHeight`（非正数回落默认，夹在 440×380 … 4000 之间）。旧 `settings.xml` 没有这两个字段时回落默认，不影响其它设置。
+- 只在 `ResizeEnd` 触发一次 `PanelSizeChanged`，由 `Plugin` 挂到 `SaveSettings`：拖动过程中不反复写文件，`ApplySettings` 里的程序化设置也不会触发保存。
+- 顺带修 DPI 挤压：主题历史的“主题历史”标签列 84 → 110 像素，“固定”列 54 → 64 像素，150% 缩放下标题不再折行。
+- 构建与测试：新增 `tests\PanelSizeTests.cs`（17 项：默认尺寸、可拖边框、无最大最小化、不进任务栏、窗口最小尺寸、按设置恢复 900×800、过小设置被撑到下限、`GetSettings` 反映实际大小、保存/读取往返、旧文件缺字段回落默认、超上限夹到 4000、非正数回落默认）；`build.ps1 -RunTests` 12 个程序共 799 项通过（原 782 + 17）。`version` 改为 1.6.3，`package.ps1` 默认版本改为 1.6.3。
+- 视觉检查：离屏渲染 720 × 640 面板（`output\panel-1.6.3-720x640.png`），历史表格随窗口长高，搜索行与状态行不再互相挤压，状态行显示“已取 2 段，右键完成取字”。
+- 未覆盖：真实鼠标拖动窗口边缘的效果与“关掉面板重开是否按上次大小出现”需人工确认；自动化只覆盖尺寸映射、下限与设置往返。
+
+## 早前（1.6.2）：连续圈注右键完成标注
 
 日期：2026-11-19。宿主：便携版 PDF-XChange Editor 11.0.1 x64（`D:\PDF-XChangeEditorPlusPortable\App\PDF-XChange\PDF Editor`）。
 

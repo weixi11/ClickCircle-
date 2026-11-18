@@ -95,7 +95,7 @@ if ($RunTests) {
     & $serviceTestPath
     if ($LASTEXITCODE -ne 0) { throw 'Hotkey routing tests failed.' }
 
-    foreach ($testName in @('RegionPickerTests', 'SeparatorPanelTests', 'ShxTextTests', 'OcrTests', 'HistoryPreferenceTests', 'CursorTests', 'RightClickTests')) {
+    foreach ($testName in @('RegionPickerTests', 'SeparatorPanelTests', 'ShxTextTests', 'OcrTests', 'HistoryPreferenceTests', 'CursorTests', 'RightClickTests', 'PanelSizeTests')) {
         $selectionTestPath = Join-Path $stagePath ($testName + '.exe')
         & $compilerPath /nologo /target:exe /platform:x64 /optimize+ `
             "/out:$selectionTestPath" "/reference:$pluginPath" "/reference:$interopPath" `
