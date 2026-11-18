@@ -1,6 +1,20 @@
-# 取字连续圈注 验收记录（1.4.0）
+# 取字连续圈注 验收记录（1.6.0）
 
-日期：2026-11-13。宿主：便携版 PDF-XChange Editor 11.0.1 x64（`D:\PDF-XChangeEditorPlusPortable\App\PDF-XChange\PDF Editor`）；本轮实机测试在 `box-test-host` 副本运行，设置与日志通过 `CLICKCIRCLE_DATA_DIR` 隔离。下文保留此前版本的验收历史。
+日期：2026-11-18（1.6.0 合并，1.5.0 发布）。宿主：便携版 PDF-XChange Editor 11.0.1 x64（`D:\PDF-XChangeEditorPlusPortable\App\PDF-XChange\PDF Editor`）。1.6.0 是把两条并行开发线合成一个版本：本地线（1.4.0 + 主题历史 + OCR 语言偏好）与 1.5.0 发布线（连续取字 + 右键完成）。下文保留此前版本的验收历史。
+
+## 本轮（1.6.0）：主题历史与连续取字合并
+
+- 合并方式：以本地线为底，移植 1.5.0 的取字累积模型（`PickedFragmentCount`、`ResetPickedFragments`、`AppendPickedFragments`）、右键完成（`FinishPicking` + `CircleTool` 的 `WM_RBUTTONDOWN` 处理与 750 ms 右键菜单吞掉窗口），并保留本地线的主题历史面板、OCR 语言偏好与原子写设置。
+- 行为：进入取字状态清空累积片段、保留主题文本；单击/框选/取字中的区域识别结果一律追加到本次取字并用分隔符重组；右键完成时把累积主题记入历史并进入连续圈注；`Esc`/“暂停”放弃本次取字；未进入取字时的区域识别仍是一次性替换主题。
+- 1.5.0 包里被移除的两项按本地线保留，并在合并版里继续生效：主题历史（`SubjectHistory`、搜索、固定 50/最近 50）与 OCR 语言偏好（校对窗口“上次选择”、`LANGUAGE_UNAVAILABLE` 回退）。
+- `Plugin.version` 由 `1.5.0` 改为 `1.6.0`；`package.ps1` 默认版本同步改为 `1.6.0`。
+- 构建：`build.ps1 -RunTests` 通过，9 个测试程序共 766 项：TextPicker 15、HotkeyBinding 92、HotkeyPanel 35、HotkeyService 145、RegionPicker 71、SeparatorPanel 111（含追加/重置/计数 13 项）、ShxText 91、OCR 142、HistoryPreference 64。编译器与汇编器仍为系统自带 `csc.exe`/`ilasm.exe`，互操作由宿主 `PXCEditorCore.x64.dll` 现场生成。
+- 装载：2026-11-18 21:16:51 把旧 1.5.0 三文件、清单、设置与日志备份到 `output\install-backup-1.5.0-20261118-211651`，随后 `install.ps1` 写入三个新文件并重写清单。`Plugins.x64` 三者 SHA-256 与 `dist` 一致：Core `F979CD1869BCF9E6CF32152424C3FDEE0016E9D053CB782D17AB7818B933212B`、pvp `F35E1D0C9FFA995089CCE485AAE49973F92988D5CDACCD7CC744FADCF7CD3CE2`、PDFXEdit.dll `3E77D7FDBF006378980FFD46110ECBE3D34C585D867D7D0AFBAC2C7DBD9BC6AA`。重开编辑器日志 `21:17:00.878 Hotkey Ctrl+Alt+P via hook`、`21:17:00.878 Init OK`。
+- 未覆盖：右键完成、连续取字与历史双击取回的真实鼠标交互仍需人工试用；本轮自动化只覆盖编译、单元测试与装载。
+
+## 早前（1.5.0 / 1.4.0 及以前）
+
+日期：2026-11-13（1.4.0）、2026-11-18（1.5.0）。宿主：1.4.0 为便携版 PDF-XChange Editor 11.0.1 x64（`D:\PDF-XChangeEditorPlusPortable\App\PDF-XChange\PDF Editor`），其本轮实机测试在 `box-test-host` 副本运行，设置与日志通过 `CLICKCIRCLE_DATA_DIR` 隔离；1.5.0 为 `F:\桌面1\PDFEditor` 的便携版 PDF-XChange Editor 10.8.4.409 x64。下文保留此前版本的验收历史。
 
 ## 本轮（1.4.0）：区域 OCR 与校对
 

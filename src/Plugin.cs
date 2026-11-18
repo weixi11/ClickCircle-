@@ -171,7 +171,7 @@ namespace ClickCircle
         public Guid _GUID { get { return new Guid("445F9883-A182-4A3F-A4E3-3FCA78F314EC"); } }
         public string Name { get { return "取字连续圈注"; } }
         public string CopyrightInfo { get { return "ClickCircle 2026"; } }
-        public uint version { get { return (1U << 16) | (5U << 8); } }
+        public uint version { get { return (1U << 16) | (6U << 8); } }
         public uint VendorID { get { return 0; } }
         public string Description { get { return "取文字后，以固定尺寸连续添加红色椭圆标注。"; } }
         public string LegalInfo { get { return "Local annotation tool."; } }
@@ -305,6 +305,33 @@ namespace ClickCircle
             if (mode == StampMode.Stamping) Panel.RememberCurrentSubject();
         }
 
+        /// <summary>取字状态行：已取几段，并提示右键完成。</summary>
+        private string PickingHint
+        {
+            get
+            {
+                int count = Panel == null || Panel.IsDisposed ? 0 : Panel.PickedFragmentCount;
+                return count == 0
+                    ? "点击文字可多次取，右键完成取字"
+                    : "已取 " + count + " 段，右键完成取字";
+            }
+        }
+
+        /// <summary>右键完成取字：用累积的片段作为主题，进入连续圈注。</summary>
+        public void FinishPicking()
+        {
+            if (mode != StampMode.Picking) return;
+            if (Panel == null || Panel.IsDisposed) return;
+            if (String.IsNullOrWhiteSpace(Panel.Subject))
+            {
+                PauseWithStatus("已暂停：主题为空");
+                return;
+            }
+            SetMode(StampMode.Stamping, null);
+            Panel.RememberCurrentSubject();
+            Log("Picking finished count=" + Panel.PickedFragmentCount + " subject=" + Panel.Subject);
+        }
+
         private void Activate(StampMode next)
         {
             try
@@ -323,7 +350,9 @@ namespace ClickCircle
                 if (document.ActiveTool == null || document.ActiveTool.ID != tool.ID)
                     previousTools[document.ID] = document.ActiveTool == null
                         ? Instance.Str2ID("tool.hand", false) : document.ActiveTool.ID;
-                SetMode(next, null);
+                if (next == StampMode.Picking && mode != StampMode.Picking)
+                    Panel.ResetPickedFragments();
+                SetMode(next, next == StampMode.Picking ? PickingHint : null);
                 changingTool = true;
                 try { document.ActivateTool(tool.ID); }
                 finally { changingTool = false; }
@@ -419,12 +448,13 @@ namespace ClickCircle
                     string text;
                     if (!TextPicker.TryGetWord(page, point, out text))
                     {
-                        Panel.SetMode("picking", "未点中文字，可拖框进行区域识别");
+                        Panel.SetMode("picking", Panel.PickedFragmentCount == 0
+                            ? "未点中文字，可拖框进行区域识别" : PickingHint);
                         return;
                     }
-                    Panel.SetPickedFragments(new[] { text });
-                    SetMode(StampMode.Stamping, null);
-                    Log("Picked " + text);
+                    Panel.AppendPickedFragments(new[] { text });
+                    SetMode(StampMode.Picking, PickingHint);
+                    Log("Picked " + text + " count=" + Panel.PickedFragmentCount);
                     return;
                 }
                 string subject = Panel.Subject.Trim();
@@ -463,9 +493,10 @@ namespace ClickCircle
                     QueueOcr(document, pageIndex, region, displayRotation);
                     return;
                 }
-                Panel.SetPickedFragments(result.Fragments);
-                SetMode(StampMode.Stamping, null);
-                Log("BoxPicked count=" + result.Fragments.Length + " subject=" + Panel.Subject);
+                Panel.AppendPickedFragments(result.Fragments);
+                SetMode(StampMode.Picking, PickingHint);
+                Log("BoxPicked count=" + result.Fragments.Length +
+                    " total=" + Panel.PickedFragmentCount + " subject=" + Panel.Subject);
             }
             catch (Exception exception)
             {
@@ -521,10 +552,19 @@ namespace ClickCircle
                         if (!IsOcrContextCurrent(documentId, pageIndex, request)) return;
                         if (result == DialogResult.OK && review.ConfirmedFragments != null)
                         {
-                            Panel.SetPickedFragments(review.ConfirmedFragments);
-                            SetMode(StampMode.Stamping, null);
+                            if (previous == StampMode.Picking)
+                            {
+                                // 取字过程中框选落到 OCR：识别结果并入本次取字，右键再完成。
+                                Panel.AppendPickedFragments(review.ConfirmedFragments);
+                                SetMode(StampMode.Picking, PickingHint);
+                            }
+                            else
+                            {
+                                Panel.SetPickedFragments(review.ConfirmedFragments);
+                                SetMode(StampMode.Stamping, null);
+                            }
                             Log("OcrPicked count=" + review.ConfirmedFragments.Length +
-                                " subject=" + Panel.Subject);
+                                " total=" + Panel.PickedFragmentCount + " subject=" + Panel.Subject);
                         }
                         else SetMode(previous, "已取消识别，原主题保留");
                         if (document.ActiveView != null && document.ActiveView.PagesView != null)
