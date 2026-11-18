@@ -1,4 +1,18 @@
-# 取字连续圈注 验收记录（1.6.1）
+# 取字连续圈注 验收记录（1.6.2）
+
+日期：2026-11-19。宿主：便携版 PDF-XChange Editor 11.0.1 x64（`D:\PDF-XChangeEditorPlusPortable\App\PDF-XChange\PDF Editor`）。
+
+## 本轮（1.6.2）：连续圈注右键完成标注
+
+- 新增 `src\RightClickRouting.cs`：把“页面右键在当前状态做什么”抽成纯函数 `RightClickAction For(bool picking, bool ocrPicking, bool stamping)`——取字（非区域识别）→ 完成取字；连续圈注 → 完成标注；区域识别、暂停等其余状态 → 不处理，右键菜单交回编辑器。`CircleTool` 的 `WM_RBUTTONDOWN`（`0x0204`）只调用这一个入口，并统一设置 750 ms 的右键菜单吞掉窗口。
+- 新增 `Plugin.FinishStamping()`：连续圈注状态下右键结束本次标注，走 `PauseWithStatus`，工具与光标交回编辑器，主题保留，点“继续标注”可接着放圈；已画好的椭圆不受影响，历史记录不变。日志新增 `Stamping finished subject=<主题>`。
+- 优先级：取字标志与圈注标志同时为真时按取字处理，避免丢掉已取片段（正常状态下两者互斥）。
+- 光标：完成标注后 `SetMode(Paused)` 触发 `ApplyModeCursor()`，页面立刻回到编辑器箭头，不必移动鼠标。
+- 构建与测试：新增 `tests\RightClickTests.cs`（8 项：两种完成、区域识别不拦截、区域识别同时取字不完成、暂停交回菜单、双标志优先级、结果稳定、两次右键动作不同）；`build.ps1 -RunTests` 11 个程序共 782 项通过（原 774 + 8）。`version` 改为 1.6.2，`package.ps1` 默认版本改为 1.6.2，打包清单加入 `src\RightClickRouting.cs` 与 `tests\RightClickTests.cs`。
+- 装机：2026-11-19 00:37:14，旧 1.6.1 三文件、清单与设置备份到 `output\install-backup-1.6.1-20261119-003714`；`Plugins.x64` 三者 SHA-256 与 `dist` 一致：Core `7190117088145D6361C1F7D16151F287A8E2864E35192192A9B204ADE114C24E`、pvp `1CA5F8A0B2DA687B3B64510A3E463067A0DDD03562C68CB40214151B6947C61C`、PDFXEdit.dll `738B697DC83D99A9CD02EEDBEAC3568D3B1B473E344B5C6474F8EDDBE70D91B8`。重开编辑器日志 `00:37:22.413 Hotkey Q via hook`、`00:37:22.413 Init OK`，自定义快捷键 `Q` 保留。
+- 未覆盖：右键的真实鼠标交互仍未自动化，需要人工确认以下三点——圈注中右键后不再出现编辑器右键菜单、面板状态行显示“已完成标注，主题保留可继续标注”、随后“继续标注”能接着放圈。
+
+## 早前（1.6.1）：取字与标注使用不同鼠标光标
 
 日期：2026-11-18。宿主：便携版 PDF-XChange Editor 11.0.1 x64（`D:\PDF-XChangeEditorPlusPortable\App\PDF-XChange\PDF Editor`）。
 

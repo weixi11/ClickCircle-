@@ -94,13 +94,19 @@ namespace ClickCircle
                     e.Handled = true;
                     return;
                 }
-                if (e.Code == 0x0204 && owner.IsPicking && !owner.IsOcrPicking)
+                if (e.Code == 0x0204)
                 {
-                    e.Handled = true;
-                    contextMenuBlockedUntilUtc = DateTime.UtcNow.AddMilliseconds(750);
-                    CancelGesture();
-                    owner.FinishPicking();
-                    return;
+                    RightClickAction action = RightClickRouting.For(
+                        owner.IsPicking, owner.IsOcrPicking, owner.IsStamping);
+                    if (action != RightClickAction.None)
+                    {
+                        e.Handled = true;
+                        contextMenuBlockedUntilUtc = DateTime.UtcNow.AddMilliseconds(750);
+                        CancelGesture();
+                        if (action == RightClickAction.FinishPicking) owner.FinishPicking();
+                        else owner.FinishStamping();
+                        return;
+                    }
                 }
                 if (e.Code == (int)UIX_EventCodes.e_MouseCaptureLost || e.Code == 0x0215 ||
                     e.Code == (int)UIX_EventCodes.e_ScrollChanged)

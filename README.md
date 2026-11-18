@@ -1,4 +1,4 @@
-# PDF-XChange 取字连续圈注（ClickCircle 1.6.1）
+# PDF-XChange 取字连续圈注（ClickCircle 1.6.2）
 
 原生 `.pvp` 入口 + C# 工具，在便携版 PDF-XChange Editor 10.8.4 / 11.0.1 x64 中加载运行；使用编辑器标准的 `/Circle` 椭圆标注与自带撤销、保存流程。详细测试记录见 `VALIDATION.md`。
 
@@ -13,7 +13,8 @@
 - **连续圈注**：每次点击以鼠标位置为中心放一个椭圆，新椭圆自动保持选中（带缩放手柄与旋转柄），右侧属性面板立即显示它的主题、颜色、尺寸和不透明度；继续点击则选中转到最新的那个。默认纸面尺寸 1.5 × 1.2 mm，可在面板改宽高（只影响后续标注，自动记忆）。填充 RGB 239/83/80，边框 RGB 211/47/47、实线 0.2 pt，不透明度 60%。主题写入标注 Subject，页面不额外绘制文字。
 - **快捷键**：默认 `Ctrl+Alt+P`，等同点“取文字”，可改成任意组合键甚至单键（例如 `F9`、`A`）。只在本编辑器是前台窗口、且焦点落在页面画布或面板空白处时响应；焦点在面板输入框、编辑器查找框、另存为等对话框、标注文字编辑区时一律不拦截，其他程序更不受影响。实现只用低级键盘钩子（`WH_KEYBOARD_LL`），不再注册全局热键；钩子装不上时面板状态行会给出原因，快捷键不可用而其他功能照常。
 - **鼠标光标**：取字状态用文本光标（I 形），去点图纸上的编号；框选与连续圈注用十字光标，方便对准位置。切换状态时光标立即变化，不必先移动鼠标；按住左键拖框期间始终是十字。
-- **暂停与撤销**：`Esc` 或面板“暂停”放弃本次取字并停止；取字时右键完成取字、进入圈注，“继续标注”恢复；切换文档自动暂停；每次撤销只移除一个椭圆，保存重开后仍是可编辑标注。
+- **右键完成**：取字时右键完成取字、带着累积主题进入连续圈注；连续圈注（“继续标注”状态）时右键完成本次标注，工具和光标交回编辑器，已画的椭圆与主题都保留，点“继续标注”可以接着放圈。两次右键都会吞掉紧随的那次右键菜单，`Esc` 仍是放弃。
+- **暂停与撤销**：`Esc` 或面板“暂停”放弃本次取字并停止；取字时右键完成取字、进入圈注，圈注时右键完成本次标注，“继续标注”恢复；切换文档自动暂停；每次撤销只移除一个椭圆，保存重开后仍是可编辑标注。
 - **取字来源**：普通“取文字”优先直接读文字层和 SHX 原文；无原文的框选自动进入 OCR。已有原文但内容错误、乱码或漏字时，可主动点“区域识别”强制识别原图，不混入不完整的原文结果。
 
 ## 使用
@@ -22,7 +23,7 @@
 2. 点顶部快速访问工具栏的“取字连续圈注”按钮打开面板。
 3. 点“取文字”（或按快捷键），依次单击图纸上的编号；也可以拖框一次取矩形内多段文字。每次取字只写入主题、不产生椭圆，多次单击/框选的结果按“分隔符”拼接；面板状态行显示已取几段。取完按右键完成取字。
 4. 取字完成后，每次左键点击页面都在点击处放一个椭圆，新圈注保持选中，属性面板同步显示它；要换主题再点“取文字”。选中状态不打断连续标注，`Esc` 暂停时照常退出。
-5. 按 `Esc` 或“暂停”停止（取字尚未右键完成时按 `Esc` 放弃本次取字）；点“继续标注”用当前主题继续。
+5. 按 `Esc` 或“暂停”停止（取字尚未右键完成时按 `Esc` 放弃本次取字）；连续圈注时也可以右键完成本次标注；点“继续标注”用当前主题继续。
 6. 改快捷键：点面板“快捷键”那一行的按钮，变成“请按新的组合键…”后直接按下想用的键立即生效；`Backspace`/`Delete` 或“清除”取消绑定；`Esc` 放弃本次录入。
 7. 用编辑器的撤销、保存、标注属性处理这些椭圆。插件不会自动保存 PDF。
 8. 面板底部“主题历史”列出用过的主题：在搜索框里输入关键字过滤，点主题那一行（或选中后按 `Enter`）把它取回主题并继续标注；勾“固定”列的勾选框把常用主题置顶，固定超过 50 个时状态行会提示。
@@ -88,6 +89,7 @@ D:\PDF-XChangeEditorPlusPortable\App\PDF-XChange\PDF Editor\Plugins.x64
 | `OcrReviewDialog.cs` | 区域预览、语言选择、旋转重识别、文字校对与明确确认 |
 | `StampPanel.cs` | 面板与设置（含分隔符、快捷键录入） |
 | `ModeCursor.cs` | 各状态的鼠标光标常量：取字用文本光标，框选与放椭圆用十字光标 |
+| `RightClickRouting.cs` | 右键路由：取字完成取字、圈注完成标注、区域识别与暂停不拦截右键 |
 | `HotkeyBinding.cs` | 快捷键解析、显示、持久化 |
 | `HotkeyScope.cs` | 触发范围判定（前台、模态、原生输入框、页面焦点） |
 | `HotkeyService.cs` | 低级键盘钩子、按键去重、延时复核、隐藏消息窗口 |
@@ -97,8 +99,8 @@ D:\PDF-XChangeEditorPlusPortable\App\PDF-XChange\PDF Editor\Plugins.x64
 ## 打包
 
 ```powershell
-.\package.ps1                     # 默认 1.6.1
-.\package.ps1 -Version 1.6.1      # 指定版本
+.\package.ps1                     # 默认 1.6.2
+.\package.ps1 -Version 1.6.2      # 指定版本
 ```
 
 按白名单打包三个发行文件、源码、脚本、说明、测试与样例，产出 `release\ClickCircle-<版本>-x64.zip`；同名包已存在时拒绝覆盖。可加 `-IncludeDrawingDemo` 把照明图演示 PDF 一起打进去。
@@ -115,7 +117,7 @@ python .\tests\verify_output.py .\output\ClickCircle_acceptance_result.pdf --exp
 
 SHX 回归样例为 `tests\ClickCircle_shx_selection.pdf`：4 种旋转，包含只有矢量轮廓的 SHX 编号、重复编号、带空格与斜杠的文字、原生文字、同位置双重表示与应忽略的普通批注。`create_shx_fixture.py` 需要 `fonttools`、`reportlab`、`pypdf` 与 Windows Arial 字体，均为测试依赖，插件不依赖 Python 或外部识别服务。
 
-`build.ps1 -RunTests` 运行 10 个测试程序共 774 项：TextPicker 15、HotkeyBinding 92、HotkeyPanel 35、HotkeyService 145、RegionPicker 71、SeparatorPanel 111、ShxText 91、OCR 142、HistoryPreference 64、Cursor 8。还可在单独的编辑器副本中运行只读 SDK 验收：
+`build.ps1 -RunTests` 运行 11 个测试程序共 782 项：TextPicker 15、HotkeyBinding 92、HotkeyPanel 35、HotkeyService 145、RegionPicker 71、SeparatorPanel 111、ShxText 91、OCR 142、HistoryPreference 64、Cursor 8、RightClick 8。还可在单独的编辑器副本中运行只读 SDK 验收：
 
 ```powershell
 .\tests\run-shx-host-tests.ps1 -EditorDirectory 'C:\测试副本\PDF Editor' -DrawingPath 'C:\图纸.pdf'
@@ -137,6 +139,7 @@ OCR 的纯图片样例为 `tests\ClickCircle_ocr_selection.pdf`，四页分别�
 - `Picked <文字> count=<N>`：单击取字成功，`N` 为本次已累积的片段数。
 - `BoxPicked count=<N> total=<M> subject=<主题>`：框选取字并入当前主题，`N` 为本次框到几段，`M` 为累积总数。
 - `Picking finished count=<N> subject=<主题>`：右键完成取字，进入连续圈注。
+- `Stamping finished subject=<主题>`：右键完成本次标注，工具交回编辑器。
 - `Circle doc=<ID> page=<n> ... subject=<主题>`：放好一个椭圆。
 - `OcrReview doc=<ID> page=<n> region=... rotation=...`：仅打开区域识别校对，尚未改主题或画圈。
 - `OcrPicked count=<N> subject=<主题>`：已明确确认校对结果并进入连续圈注。

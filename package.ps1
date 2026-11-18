@@ -1,6 +1,6 @@
 [CmdletBinding()]
 param(
-    [string] $Version = '1.6.1',
+    [string] $Version = '1.6.2',
     [string] $OutputDirectory = (Join-Path $PSScriptRoot 'release'),
     [switch] $IncludeDrawingDemo
 )
@@ -32,6 +32,7 @@ $requiredFiles = @(
     'src\StampPanel.cs',
     'src\SubjectHistory.cs',
     'src\ModeCursor.cs',
+    'src\RightClickRouting.cs',
     'src\HotkeyBinding.cs',
     'src\HotkeyScope.cs',
     'src\HotkeyService.cs',
@@ -53,6 +54,7 @@ $requiredFiles = @(
     'tests\OcrTests.cs',
     'tests\HistoryPreferenceTests.cs',
     'tests\CursorTests.cs',
+    'tests\RightClickTests.cs',
     'tests\OcrHostTests.cs',
     'tests\run-ocr-host-tests.ps1',
     'tests\create_ocr_fixture.py',

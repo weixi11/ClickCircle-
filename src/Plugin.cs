@@ -35,6 +35,9 @@ namespace ClickCircle
             (mode == StampMode.Picking || mode == StampMode.OcrPicking); } }
         public bool IsOcrPicking { get { return mode == StampMode.OcrPicking && !unloading; } }
 
+        /// <summary>正在连续圈注：每次左键点击放一个椭圆。</summary>
+        public bool IsStamping { get { return mode == StampMode.Stamping && !unloading; } }
+
         /// <summary>当前模式对应的页面光标：取字是文本光标，框选与放椭圆是十字光标。</summary>
         public int CurrentCursorId
         {
@@ -187,7 +190,7 @@ namespace ClickCircle
         public Guid _GUID { get { return new Guid("445F9883-A182-4A3F-A4E3-3FCA78F314EC"); } }
         public string Name { get { return "取字连续圈注"; } }
         public string CopyrightInfo { get { return "ClickCircle 2026"; } }
-        public uint version { get { return (1U << 16) | (6U << 8) | 1U; } }
+        public uint version { get { return (1U << 16) | (6U << 8) | 2U; } }
         public uint VendorID { get { return 0; } }
         public string Description { get { return "取文字后，以固定尺寸连续添加红色椭圆标注。"; } }
         public string LegalInfo { get { return "Local annotation tool."; } }
@@ -346,6 +349,18 @@ namespace ClickCircle
             SetMode(StampMode.Stamping, null);
             Panel.RememberCurrentSubject();
             Log("Picking finished count=" + Panel.PickedFragmentCount + " subject=" + Panel.Subject);
+        }
+
+        /// <summary>
+        /// 右键完成标注：结束本次连续圈注，工具与光标交回编辑器，主题保留以便“继续标注”。
+        /// 已画好的椭圆不受影响，也不再吞掉后续的右键菜单。
+        /// </summary>
+        public void FinishStamping()
+        {
+            if (mode != StampMode.Stamping) return;
+            string subject = Panel == null || Panel.IsDisposed ? String.Empty : Panel.Subject;
+            PauseWithStatus("已完成标注，主题保留可继续标注");
+            Log("Stamping finished subject=" + subject);
         }
 
         private void Activate(StampMode next)
