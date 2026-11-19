@@ -640,7 +640,9 @@ namespace ClickCircle
             bool committed = false;
             try
             {
-                annotation = page.InsertNewAnnot(atoms.StrToAtom("Circle"), ref bounds, 0);
+                // nPos 是注释在页面列表中的插入位置：0 会插到最底层，追加到末尾才是置顶。
+                uint insertionPosition = page.GetAnnotsCount();
+                annotation = page.InsertNewAnnot(atoms.StrToAtom("Circle"), ref bounds, insertionPosition);
                 var data = (IPXC_AnnotData_SquareCircle)annotation.Data;
                 var fill = auxiliary.CreateColor(ColorType.ColorType_RGB);
                 fill.SetRGB(239f / 255, 83f / 255, 80f / 255);

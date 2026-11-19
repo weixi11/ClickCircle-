@@ -195,7 +195,7 @@ namespace ClickCircle
         public string Name { get { return "取字连续圈注"; } }
         public string CopyrightInfo { get { return "ClickCircle 2026"; } }
         /// <summary>插件版本号，面板标题显示同一数值。</summary>
-        private const uint PluginVersionNumber = (1U << 16) | (7U << 8) | 1U;
+        private const uint PluginVersionNumber = (1U << 16) | (7U << 8) | 2U;
 
         public uint version { get { return PluginVersionNumber; } }
 
@@ -682,8 +682,9 @@ namespace ClickCircle
                 Panel.RememberCurrentSubject();
                 bool selected = AnnotSelector.Keep(Instance, document, annotation);
                 Log(String.Format(System.Globalization.CultureInfo.InvariantCulture,
-                    "Circle doc={0} page={1} x={2:F4} y={3:F4} subject={4} selected={5}",
-                    document.ID, pageIndex, point.x, point.y, subject, selected));
+                    "Circle doc={0} page={1} x={2:F4} y={3:F4} subject={4} selected={5} index={6} count={7}",
+                    document.ID, pageIndex, point.x, point.y, subject, selected,
+                    annotation.IndexOnPage, page.GetAnnotsCount()));
             }
             catch (Exception exception)
             {
