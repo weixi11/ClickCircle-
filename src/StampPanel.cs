@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.Drawing;
 using System.IO;
+using System.Runtime.InteropServices;
 using System.Windows.Forms;
 using System.Xml;
 using System.Xml.Serialization;
@@ -10,21 +11,21 @@ namespace ClickCircle
 {
     public sealed class StampPanel : Form
     {
-        private readonly TextBox subjectBox;
-        private readonly ComboBox separatorInput;
-        private readonly NumericUpDown widthInput;
-        private readonly NumericUpDown heightInput;
-        private readonly Button pickButton;
-        private readonly Button ocrButton;
-        private readonly Button resumeButton;
-        private readonly Button pauseButton;
-        private readonly Button hotkeyButton;
-        private readonly Button clearHotkeyButton;
-        private readonly Button updateButton;
-        private readonly Label statusLabel;
-        private readonly TextBox historySearch;
-        private readonly DataGridView historyGrid;
-        private readonly Label historyStatus;
+        private TextBox subjectBox;
+        private ComboBox separatorInput;
+        private NumericUpDown widthInput;
+        private NumericUpDown heightInput;
+        private Button pickButton;
+        private Button ocrButton;
+        private Button resumeButton;
+        private Button pauseButton;
+        private Button hotkeyButton;
+        private Button clearHotkeyButton;
+        private Button updateButton;
+        private Label statusLabel;
+        private TextBox historySearch;
+        private DataGridView historyGrid;
+        private Label historyStatus;
         private SubjectHistory history = new SubjectHistory();
         private bool updatingHistory;
         private string ocrLanguage = String.Empty;
@@ -36,6 +37,22 @@ namespace ClickCircle
         private bool composingSubject;
         private string separator = "/";
         private string[] pickedFragments;
+        private Panel mainPage;
+        private Panel settingsPage;
+        private LinkLabel backLink;
+        private Button settingsButton;
+        private Label hotkeySummary;
+        private Label summaryLabel;
+        private Label statusDot;
+        private Label versionLabel;
+        private string versionText = String.Empty;
+
+        private static readonly Color Accent = Color.FromArgb(47, 107, 255);
+        private static readonly Color PageBack = Color.FromArgb(245, 247, 250);
+        private static readonly Color TextColor = Color.FromArgb(43, 47, 54);
+        private static readonly Color Muted = Color.FromArgb(138, 147, 163);
+        private static readonly Color BorderColor = Color.FromArgb(221, 227, 236);
+        private static readonly Color PausedDot = Color.FromArgb(245, 166, 35);
 
         public event Action PickRequested;
         public event Action OcrRequested;
@@ -71,8 +88,6 @@ namespace ClickCircle
             AutoScaleMode = AutoScaleMode.None;
             ClientSize = new Size(DefaultPanelWidth, DefaultPanelHeight);
             FormBorderStyle = FormBorderStyle.SizableToolWindow;
-            // MinimumSize 按窗口尺寸算：先按常见工具窗口边框（左右各 16、标题加边框 48）估一份，
-            // OnLoad 里用真实边框再校正一次，保证客户区不小于 MinimumPanelWidth × MinimumPanelHeight。
             MinimumSize = new Size(MinimumPanelWidth + 32, MinimumPanelHeight + 48);
             MaximumSize = new Size(4000, 4000);
             MaximizeBox = false;
@@ -82,118 +97,74 @@ namespace ClickCircle
             TopMost = false;
             KeyPreview = true;
             Font = new Font("Microsoft YaHei UI", 10F, FontStyle.Regular);
-            Padding = new Padding(12);
-            // 只在用户拖完窗口边缘时记一次，拖动过程中不反复写设置文件。
+            BackColor = PageBack;
+            Padding = new Padding(14);
             ResizeEnd += delegate { if (!applyingSettings) Raise(PanelSizeChanged); };
 
-            TableLayoutPanel layout = new TableLayoutPanel();
-            layout.Dock = DockStyle.Fill;
-            layout.ColumnCount = 1;
-            layout.RowCount = 7;
-            layout.Margin = Padding.Empty;
-            layout.RowStyles.Add(new RowStyle(SizeType.Absolute, 48F));
-            layout.RowStyles.Add(new RowStyle(SizeType.Absolute, 44F));
-            layout.RowStyles.Add(new RowStyle(SizeType.Absolute, 44F));
-            layout.RowStyles.Add(new RowStyle(SizeType.Absolute, 48F));
-            layout.RowStyles.Add(new RowStyle(SizeType.Absolute, 44F));
+            BuildMainPage();
+            BuildSettingsPage();
+            Deactivate += delegate { CancelHotkeyCapture(); };
+
+            ApplySettings(settings ?? new PluginSettings());
+            UpdateHotkeyButton();
+            UpdateSummary();
+            SetMode("paused", "待取字");
+        }
+
+        private void BuildMainPage()
+        {
+            mainPage = new Panel { Dock = DockStyle.Fill, BackColor = PageBack };
+            Controls.Add(mainPage);
+
+            TableLayoutPanel layout = new TableLayoutPanel {
+                Dock = DockStyle.Fill, ColumnCount = 1, RowCount = 4, Margin = Padding.Empty,
+                BackColor = PageBack
+            };
+            layout.RowStyles.Add(new RowStyle(SizeType.Absolute, 56F));
+            layout.RowStyles.Add(new RowStyle(SizeType.Absolute, 56F));
             layout.RowStyles.Add(new RowStyle(SizeType.Absolute, 44F));
             layout.RowStyles.Add(new RowStyle(SizeType.Percent, 100F));
-            Controls.Add(layout);
+            mainPage.Controls.Add(layout);
 
-            TableLayoutPanel subjectRow = new TableLayoutPanel();
-            subjectRow.Dock = DockStyle.Fill;
-            subjectRow.ColumnCount = 2;
-            subjectRow.RowCount = 1;
-            subjectRow.Margin = Padding.Empty;
-            subjectRow.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, 48F));
+            TableLayoutPanel subjectRow = new TableLayoutPanel {
+                Dock = DockStyle.Fill, ColumnCount = 2, RowCount = 1, Margin = Padding.Empty,
+                BackColor = PageBack
+            };
+            subjectRow.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, 52F));
             subjectRow.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100F));
             Label subjectLabel = MakeLabel("主题", "标注主题");
-            subjectBox = new TextBox();
-            subjectBox.Dock = DockStyle.Top;
-            subjectBox.Margin = new Padding(0, 3, 0, 0);
-            subjectBox.AccessibleName = "标注主题";
-            subjectBox.Name = "Subject";
-            subjectBox.Multiline = false;
-            subjectBox.WordWrap = false;
-            subjectBox.TabIndex = 0;
+            subjectLabel.Font = new Font(Font.FontFamily, 10F, FontStyle.Bold);
+            subjectLabel.ForeColor = TextColor;
+            subjectBox = new TextBox {
+                Name = "Subject", AccessibleName = "标注主题", Multiline = false, WordWrap = false,
+                BorderStyle = BorderStyle.FixedSingle, BackColor = Color.White, ForeColor = TextColor,
+                Dock = DockStyle.Fill, Margin = new Padding(0, 12, 0, 12), TabIndex = 0
+            };
             subjectBox.TextChanged += delegate {
                 if (!composingSubject)
                     pickedFragments = null;
                 UpdateButtonState();
             };
+            subjectBox.HandleCreated += delegate { SetCueBanner(subjectBox, "请输入或选择主题"); };
             subjectRow.Controls.Add(subjectLabel, 0, 0);
             subjectRow.Controls.Add(subjectBox, 1, 0);
             layout.Controls.Add(subjectRow, 0, 0);
 
-            TableLayoutPanel separatorRow = new TableLayoutPanel();
-            separatorRow.Dock = DockStyle.Fill;
-            separatorRow.ColumnCount = 3;
-            separatorRow.RowCount = 1;
-            separatorRow.Margin = Padding.Empty;
-            separatorRow.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, 72F));
-            // 分隔符输入框给固定宽度，右边的空列吃掉剩余空间，避免下拉框被拉伸成一条长条。
-            separatorRow.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, 150F));
-            separatorRow.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100F));
-            separatorInput = new ComboBox();
-            separatorInput.Name = "Separator";
-            separatorInput.AccessibleName = "文字分隔符";
-            separatorInput.Dock = DockStyle.Top;
-            separatorInput.Margin = new Padding(0, 3, 0, 0);
-            separatorInput.DropDownStyle = ComboBoxStyle.DropDown;
-            separatorInput.AutoCompleteMode = AutoCompleteMode.None;
-            separatorInput.TabIndex = 1;
-            separatorInput.Items.AddRange(new object[] {
-                new SeparatorPreset("/", "/"),
-                new SeparatorPreset("-", "-"),
-                new SeparatorPreset("，", "，"),
-                new SeparatorPreset("、", "、"),
-                new SeparatorPreset("空格", " "),
-                new SeparatorPreset("无分隔符", String.Empty)
-            });
-            separatorInput.TextChanged += SeparatorInputChanged;
-            separatorInput.SelectedIndexChanged += SeparatorInputChanged;
-            separatorRow.Controls.Add(MakeLabel("分隔符", "文字分隔符"), 0, 0);
-            separatorRow.Controls.Add(separatorInput, 1, 0);
-            layout.Controls.Add(separatorRow, 0, 1);
-
-            TableLayoutPanel dimensionsRow = new TableLayoutPanel();
-            dimensionsRow.Dock = DockStyle.Fill;
-            // 宽/高两个数字框各占固定宽度，中间留空隙，最后用空列把整行收在左边。
-            dimensionsRow.ColumnCount = 6;
-            dimensionsRow.RowCount = 1;
-            dimensionsRow.Margin = Padding.Empty;
-            dimensionsRow.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, 72F));
-            dimensionsRow.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, 96F));
-            dimensionsRow.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, 16F));
-            dimensionsRow.ColumnStyles.Add(new ColumnStyle(SizeType.AutoSize));
-            dimensionsRow.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, 96F));
-            dimensionsRow.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100F));
-            widthInput = MakeDimensionInput("椭圆宽度，毫米", 2);
-            heightInput = MakeDimensionInput("椭圆高度，毫米", 3);
-            widthInput.Margin = new Padding(0, 3, 0, 0);
-            heightInput.Margin = new Padding(0, 3, 0, 0);
-            dimensionsRow.Controls.Add(MakeLabel("宽 mm", "椭圆宽度"), 0, 0);
-            dimensionsRow.Controls.Add(widthInput, 1, 0);
-            dimensionsRow.Controls.Add(MakeLabel("高 mm", "椭圆高度"), 3, 0);
-            dimensionsRow.Controls.Add(heightInput, 4, 0);
-            layout.Controls.Add(dimensionsRow, 0, 2);
-
-            TableLayoutPanel commandsRow = new TableLayoutPanel();
-            commandsRow.Dock = DockStyle.Fill;
-            commandsRow.ColumnCount = 4;
-            commandsRow.RowCount = 1;
-            commandsRow.Margin = Padding.Empty;
+            TableLayoutPanel commandsRow = new TableLayoutPanel {
+                Dock = DockStyle.Fill, ColumnCount = 4, RowCount = 1, Margin = Padding.Empty,
+                BackColor = PageBack
+            };
             for (int column = 0; column < 4; column++)
                 commandsRow.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 25F));
-            pickButton = MakeButton("取文字", 4);
-            ocrButton = MakeButton("区域识别", 5);
+            pickButton = MakePrimaryButton("取文字", 4);
+            ocrButton = MakeSecondaryButton("区域识别", 5);
             ocrButton.Name = "OcrPick";
-            resumeButton = MakeButton("继续标注", 6);
-            pauseButton = MakeButton("暂停", 7);
-            pickButton.Margin = new Padding(0, 3, 8, 3);
-            ocrButton.Margin = new Padding(0, 3, 8, 3);
-            resumeButton.Margin = new Padding(0, 3, 8, 3);
-            pauseButton.Margin = new Padding(0, 3, 0, 3);
+            resumeButton = MakeSecondaryButton("继续标注", 6);
+            pauseButton = MakeSecondaryButton("暂停", 7);
+            pickButton.Margin = new Padding(0, 6, 6, 6);
+            ocrButton.Margin = new Padding(3, 6, 6, 6);
+            resumeButton.Margin = new Padding(3, 6, 6, 6);
+            pauseButton.Margin = new Padding(3, 6, 0, 6);
             pickButton.Click += delegate { Raise(PickRequested); };
             ocrButton.Click += delegate { Raise(OcrRequested); };
             resumeButton.Click += delegate { Raise(ResumeRequested); };
@@ -202,79 +173,110 @@ namespace ClickCircle
             commandsRow.Controls.Add(ocrButton, 1, 0);
             commandsRow.Controls.Add(resumeButton, 2, 0);
             commandsRow.Controls.Add(pauseButton, 3, 0);
-            layout.Controls.Add(commandsRow, 0, 3);
+            layout.Controls.Add(commandsRow, 0, 1);
 
-            TableLayoutPanel hotkeyRow = new TableLayoutPanel();
-            hotkeyRow.Dock = DockStyle.Fill;
-            hotkeyRow.ColumnCount = 3;
-            hotkeyRow.RowCount = 1;
-            hotkeyRow.Margin = Padding.Empty;
-            hotkeyRow.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, 72F));
-            hotkeyRow.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100F));
-            hotkeyRow.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, 76F));
-            hotkeyButton = MakeButton(String.Empty, 8);
-            hotkeyButton.Margin = new Padding(0, 3, 8, 3);
-            hotkeyButton.Click += delegate { BeginHotkeyCapture(); };
-            clearHotkeyButton = MakeButton("清除", 9);
-            clearHotkeyButton.Margin = new Padding(0, 3, 0, 3);
-            clearHotkeyButton.Click += delegate { SetHotkey(HotkeyBinding.Empty); };
-            hotkeyRow.Controls.Add(MakeLabel("快捷键", "取文字快捷键"), 0, 0);
-            hotkeyRow.Controls.Add(hotkeyButton, 1, 0);
-            hotkeyRow.Controls.Add(clearHotkeyButton, 2, 0);
-            layout.Controls.Add(hotkeyRow, 0, 4);
-
-            TableLayoutPanel statusRow = new TableLayoutPanel();
-            statusRow.Dock = DockStyle.Fill;
-            statusRow.ColumnCount = 2;
-            statusRow.RowCount = 1;
-            statusRow.Margin = Padding.Empty;
+            Panel statusPanel = new Panel {
+                Dock = DockStyle.Fill, BackColor = Color.FromArgb(238, 242, 248),
+                Margin = new Padding(0, 4, 0, 4)
+            };
+            TableLayoutPanel statusRow = new TableLayoutPanel {
+                Dock = DockStyle.Fill, ColumnCount = 6, RowCount = 1, Margin = Padding.Empty,
+                BackColor = Color.Transparent
+            };
+            statusRow.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, 16F));
             statusRow.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100F));
-            statusRow.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, 104F));
-            statusLabel = new Label();
-            statusLabel.Dock = DockStyle.Fill;
-            statusLabel.Margin = new Padding(0, 5, 0, 0);
-            statusLabel.TextAlign = ContentAlignment.MiddleLeft;
-            statusLabel.AccessibleName = "圈注状态";
-            statusLabel.AutoEllipsis = false;
-            updateButton = MakeButton("检查更新", 20);
-            updateButton.AccessibleName = "检查更新";
-            updateButton.Margin = new Padding(6, 2, 0, 2);
-            updateButton.Click += delegate { Raise(CheckUpdateRequested); };
-            statusRow.Controls.Add(statusLabel, 0, 0);
-            statusRow.Controls.Add(updateButton, 1, 0);
-            layout.Controls.Add(statusRow, 0, 5);
+            statusRow.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, 42F));
+            statusRow.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, 56F));
+            statusRow.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, 96F));
+            statusRow.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, 56F));
+            statusDot = new Label {
+                Text = "●", Dock = DockStyle.Fill, TextAlign = ContentAlignment.MiddleCenter,
+                ForeColor = PausedDot, Font = new Font(Font.FontFamily, 9F)
+            };
+            statusLabel = new Label {
+                Dock = DockStyle.Fill, TextAlign = ContentAlignment.MiddleLeft,
+                ForeColor = TextColor, AutoEllipsis = true, AccessibleName = "圈注状态"
+            };
+            Label hotkeyLabel = MakeLabel("快捷键", "取文字快捷键");
+            hotkeyLabel.ForeColor = Muted;
+            hotkeyLabel.Font = new Font(Font.FontFamily, 8.5F);
+            hotkeySummary = new Label {
+                Dock = DockStyle.Fill, TextAlign = ContentAlignment.MiddleCenter,
+                BackColor = Color.White, ForeColor = TextColor, BorderStyle = BorderStyle.FixedSingle,
+                Margin = new Padding(0, 7, 6, 7), AutoEllipsis = true,
+                Font = new Font(Font.FontFamily, 8.5F), AccessibleName = "当前快捷键"
+            };
+            summaryLabel = new Label {
+                Dock = DockStyle.Fill, TextAlign = ContentAlignment.MiddleCenter,
+                ForeColor = Muted, AutoEllipsis = true, Font = new Font(Font.FontFamily, 8.5F)
+            };
+            settingsButton = MakeSecondaryButton("设置", 12);
+            settingsButton.Margin = new Padding(4, 7, 0, 7);
+            settingsButton.Font = new Font(Font.FontFamily, 9F);
+            settingsButton.Click += delegate { ShowSettings(true); };
+            statusRow.Controls.Add(statusDot, 0, 0);
+            statusRow.Controls.Add(statusLabel, 1, 0);
+            statusRow.Controls.Add(hotkeyLabel, 2, 0);
+            statusRow.Controls.Add(hotkeySummary, 3, 0);
+            statusRow.Controls.Add(summaryLabel, 4, 0);
+            statusRow.Controls.Add(settingsButton, 5, 0);
+            statusPanel.Controls.Add(statusRow);
+            layout.Controls.Add(statusPanel, 0, 2);
 
             TableLayoutPanel historyLayout = new TableLayoutPanel {
-                Dock = DockStyle.Fill, ColumnCount = 1, RowCount = 3, Margin = Padding.Empty
+                Dock = DockStyle.Fill, ColumnCount = 1, RowCount = 3, Margin = Padding.Empty,
+                BackColor = PageBack
             };
+            historyLayout.RowStyles.Add(new RowStyle(SizeType.Absolute, 30F));
             historyLayout.RowStyles.Add(new RowStyle(SizeType.Absolute, 40F));
             historyLayout.RowStyles.Add(new RowStyle(SizeType.Percent, 100F));
-            historyLayout.RowStyles.Add(new RowStyle(SizeType.Absolute, 24F));
-            TableLayoutPanel searchRow = new TableLayoutPanel {
-                Dock = DockStyle.Fill, ColumnCount = 2, RowCount = 1, Margin = Padding.Empty
+            TableLayoutPanel historyHeader = new TableLayoutPanel {
+                Dock = DockStyle.Fill, ColumnCount = 2, RowCount = 1, Margin = Padding.Empty,
+                BackColor = PageBack
             };
-            searchRow.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, 110F));
-            searchRow.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100F));
+            historyHeader.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100F));
+            historyHeader.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, 96F));
+            Label historyTitle = MakeLabel("主题历史", "主题历史");
+            historyTitle.Font = new Font(Font.FontFamily, 11F, FontStyle.Bold);
+            historyTitle.ForeColor = TextColor;
+            historyStatus = new Label {
+                Dock = DockStyle.Fill, TextAlign = ContentAlignment.MiddleRight,
+                ForeColor = Muted, AutoEllipsis = true, Font = new Font(Font.FontFamily, 9F),
+                AccessibleName = "历史主题数量"
+            };
+            historyHeader.Controls.Add(historyTitle, 0, 0);
+            historyHeader.Controls.Add(historyStatus, 1, 0);
+            historyLayout.Controls.Add(historyHeader, 0, 0);
+
             historySearch = new TextBox {
                 Name = "HistorySearch", AccessibleName = "搜索主题历史",
-                Dock = DockStyle.Top, Margin = new Padding(0, 4, 0, 0), TabIndex = 10
+                BorderStyle = BorderStyle.FixedSingle, BackColor = Color.White, ForeColor = TextColor,
+                Dock = DockStyle.Fill, Margin = new Padding(0, 4, 0, 4), TabIndex = 10
             };
             historySearch.TextChanged += delegate { RefreshHistory(); };
-            searchRow.Controls.Add(MakeLabel("主题历史", "主题历史"), 0, 0);
-            searchRow.Controls.Add(historySearch, 1, 0);
-            historyLayout.Controls.Add(searchRow, 0, 0);
+            historySearch.HandleCreated += delegate { SetCueBanner(historySearch, "搜索历史主题…"); };
+            historyLayout.Controls.Add(historySearch, 0, 1);
+
             historyGrid = new DataGridView {
                 Name = "SubjectHistory", AccessibleName = "主题历史列表",
                 Dock = DockStyle.Fill, Margin = Padding.Empty, TabIndex = 11,
                 AllowUserToAddRows = false, AllowUserToDeleteRows = false,
                 AllowUserToResizeRows = false, RowHeadersVisible = false,
                 MultiSelect = false, SelectionMode = DataGridViewSelectionMode.FullRowSelect,
-                BackgroundColor = SystemColors.Window, BorderStyle = BorderStyle.FixedSingle,
+                BackgroundColor = Color.White, BorderStyle = BorderStyle.FixedSingle,
                 AutoSizeColumnsMode = DataGridViewAutoSizeColumnsMode.Fill,
                 ColumnHeadersHeightSizeMode = DataGridViewColumnHeadersHeightSizeMode.DisableResizing,
-                ColumnHeadersHeight = 30
+                ColumnHeadersHeight = 30, GridColor = BorderColor, EnableHeadersVisualStyles = false
             };
-            historyGrid.RowTemplate.Height = 30;
+            historyGrid.ColumnHeadersDefaultCellStyle.BackColor = Color.FromArgb(242, 245, 250);
+            historyGrid.ColumnHeadersDefaultCellStyle.ForeColor = Muted;
+            historyGrid.ColumnHeadersDefaultCellStyle.SelectionBackColor = Color.FromArgb(242, 245, 250);
+            historyGrid.DefaultCellStyle.BackColor = Color.White;
+            historyGrid.DefaultCellStyle.ForeColor = TextColor;
+            historyGrid.DefaultCellStyle.SelectionBackColor = Color.FromArgb(232, 240, 255);
+            historyGrid.DefaultCellStyle.SelectionForeColor = TextColor;
+            historyGrid.RowTemplate.Height = Font.Height + 14;
+            historyGrid.ColumnHeadersHeight = Font.Height + 16;
             historyGrid.Columns.Add(new DataGridViewCheckBoxColumn {
                 Name = "Pinned", HeaderText = "固定", Width = 64,
                 AutoSizeMode = DataGridViewAutoSizeColumnMode.None,
@@ -300,79 +302,269 @@ namespace ClickCircle
                     historyGrid.CommitEdit(DataGridViewDataErrorContexts.Commit);
             };
             historyGrid.CellValueChanged += HistoryPinChanged;
-            historyLayout.Controls.Add(historyGrid, 0, 1);
-            historyStatus = MakeLabel(String.Empty, "历史主题数量");
-            historyLayout.Controls.Add(historyStatus, 0, 2);
-            layout.Controls.Add(historyLayout, 0, 6);
-
-            widthInput.ValueChanged += DimensionValueChanged;
-            heightInput.ValueChanged += DimensionValueChanged;
-            Deactivate += delegate { CancelHotkeyCapture(); };
-
-            // —— 排版收敛 ——
-            // 行高按字体与控件首选高度算：150% 缩放下不会把字挤在 44 像素的固定行里，
-            // 100% 下也不会留出大片空白；标签列统一到最宽的那个标签，四行的输入框左边缘对齐。
-            int labelWidth = Math.Max(
-                TextRenderer.MeasureText("分隔符", Font).Width,
-                Math.Max(TextRenderer.MeasureText("主题历史", Font).Width,
-                    TextRenderer.MeasureText("宽 mm", Font).Width)) + 12;
-            int textRow = PreferredHeight(subjectBox, 24) + 16;
-            int comboTall = PreferredHeight(separatorInput, 24) + 16;
-            int sizeTall = PreferredHeight(widthInput, 24) + 16;
-            int commandTall = PreferredHeight(pickButton, 28) + 14;
-            int hotkeyTall = PreferredHeight(hotkeyButton, 28) + 14;
-            int statusTall = Math.Max(Font.Height + 14, PreferredHeight(updateButton, 26) + 6);
-
-            layout.RowStyles[0] = new RowStyle(SizeType.Absolute, textRow);
-            layout.RowStyles[1] = new RowStyle(SizeType.Absolute, comboTall);
-            layout.RowStyles[2] = new RowStyle(SizeType.Absolute, sizeTall);
-            layout.RowStyles[3] = new RowStyle(SizeType.Absolute, commandTall);
-            layout.RowStyles[4] = new RowStyle(SizeType.Absolute, hotkeyTall);
-            layout.RowStyles[5] = new RowStyle(SizeType.Absolute, statusTall);
-
-            subjectRow.ColumnStyles[0] = new ColumnStyle(SizeType.Absolute, labelWidth);
-            separatorRow.ColumnStyles[0] = new ColumnStyle(SizeType.Absolute, labelWidth);
-            dimensionsRow.ColumnStyles[0] = new ColumnStyle(SizeType.Absolute, labelWidth);
-            hotkeyRow.ColumnStyles[0] = new ColumnStyle(SizeType.Absolute, labelWidth);
-            searchRow.ColumnStyles[0] = new ColumnStyle(SizeType.Absolute, labelWidth);
-
-            subjectBox.Margin = TopCentered(subjectBox, textRow);
-            separatorInput.Margin = TopCentered(separatorInput, comboTall);
-            widthInput.Margin = TopCentered(widthInput, sizeTall);
-            heightInput.Margin = TopCentered(heightInput, sizeTall);
-            historySearch.Margin = TopCentered(historySearch, PreferredHeight(historySearch, 24) + 16);
-            subjectBox.Dock = DockStyle.Fill;
-            separatorInput.Dock = DockStyle.Fill;
-            widthInput.Dock = DockStyle.Fill;
-            heightInput.Dock = DockStyle.Fill;
-            historySearch.Dock = DockStyle.Fill;
-
-            pickButton.Margin = new Padding(0, 5, 8, 5);
-            ocrButton.Margin = new Padding(0, 5, 8, 5);
-            resumeButton.Margin = new Padding(0, 5, 8, 5);
-            pauseButton.Margin = new Padding(0, 5, 0, 5);
-            hotkeyButton.Margin = new Padding(0, 5, 8, 5);
-            clearHotkeyButton.Margin = new Padding(0, 5, 0, 5);
-            statusLabel.Margin = new Padding(0, 2, 0, 0);
-
-            historyLayout.RowStyles[0] =
-                new RowStyle(SizeType.Absolute, PreferredHeight(historySearch, 24) + 16);
-            historyLayout.RowStyles[2] = new RowStyle(SizeType.Absolute, Font.Height + 10);
-            historyGrid.RowTemplate.Height = Font.Height + 14;
-            historyGrid.ColumnHeadersHeightSizeMode = DataGridViewColumnHeadersHeightSizeMode.EnableResizing;
-            historyGrid.ColumnHeadersHeight = Font.Height + 16;
-
-            ApplySettings(settings ?? new PluginSettings());
-            UpdateHotkeyButton();
-            SetMode("paused", "待取字");
+            historyLayout.Controls.Add(historyGrid, 0, 2);
+            layout.Controls.Add(historyLayout, 0, 3);
         }
 
-        /// <summary>在标题栏显示版本号；传空值保持原标题。</summary>
+        private void BuildSettingsPage()
+        {
+            settingsPage = new Panel { Dock = DockStyle.Fill, BackColor = PageBack, Visible = false };
+            Controls.Add(settingsPage);
+
+            TableLayoutPanel layout = new TableLayoutPanel {
+                Dock = DockStyle.Fill, ColumnCount = 1, RowCount = 11, Margin = Padding.Empty,
+                BackColor = PageBack
+            };
+            layout.RowStyles.Add(new RowStyle(SizeType.Absolute, 32F));
+            layout.RowStyles.Add(new RowStyle(SizeType.Absolute, 28F));
+            layout.RowStyles.Add(new RowStyle(SizeType.Absolute, 48F));
+            layout.RowStyles.Add(new RowStyle(SizeType.Absolute, 48F));
+            layout.RowStyles.Add(new RowStyle(SizeType.Absolute, 14F));
+            layout.RowStyles.Add(new RowStyle(SizeType.Absolute, 28F));
+            layout.RowStyles.Add(new RowStyle(SizeType.Absolute, 48F));
+            layout.RowStyles.Add(new RowStyle(SizeType.Percent, 100F));
+            layout.RowStyles.Add(new RowStyle(SizeType.Absolute, 14F));
+            layout.RowStyles.Add(new RowStyle(SizeType.Absolute, 48F));
+            layout.RowStyles.Add(new RowStyle(SizeType.Absolute, 24F));
+            settingsPage.Controls.Add(layout);
+
+            backLink = new LinkLabel {
+                Text = "‹  返回主页面", Dock = DockStyle.Fill, TextAlign = ContentAlignment.MiddleLeft,
+                LinkColor = Accent, ActiveLinkColor = Accent,
+                Font = new Font(Font.FontFamily, 9.5F), Margin = Padding.Empty, TabIndex = 30
+            };
+            backLink.LinkClicked += delegate { ShowSettings(false); };
+            layout.Controls.Add(backLink, 0, 0);
+
+            Label parameterTitle = MakeLabel("标注参数", "标注参数");
+            parameterTitle.Font = new Font(Font.FontFamily, 11F, FontStyle.Bold);
+            parameterTitle.ForeColor = TextColor;
+            layout.Controls.Add(parameterTitle, 0, 1);
+
+            TableLayoutPanel separatorRow = new TableLayoutPanel {
+                Dock = DockStyle.Fill, ColumnCount = 3, RowCount = 1, Margin = Padding.Empty,
+                BackColor = PageBack
+            };
+            separatorRow.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, 64F));
+            separatorRow.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, 200F));
+            separatorRow.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100F));
+            Label separatorLabel = MakeLabel("分隔符", "文字分隔符");
+            separatorLabel.ForeColor = TextColor;
+            separatorInput = new ComboBox {
+                Name = "Separator", AccessibleName = "文字分隔符", Dock = DockStyle.Fill,
+                Margin = new Padding(0, 10, 0, 10), DropDownStyle = ComboBoxStyle.DropDown,
+                AutoCompleteMode = AutoCompleteMode.None, TabIndex = 1
+            };
+            separatorInput.Items.AddRange(new object[] {
+                new SeparatorPreset("/", "/"),
+                new SeparatorPreset("-", "-"),
+                new SeparatorPreset("，", "，"),
+                new SeparatorPreset("、", "、"),
+                new SeparatorPreset("空格", " "),
+                new SeparatorPreset("无分隔符", String.Empty)
+            });
+            separatorInput.TextChanged += SeparatorInputChanged;
+            separatorInput.SelectedIndexChanged += SeparatorInputChanged;
+            separatorRow.Controls.Add(separatorLabel, 0, 0);
+            separatorRow.Controls.Add(separatorInput, 1, 0);
+            layout.Controls.Add(separatorRow, 0, 2);
+
+            TableLayoutPanel sizeRow = new TableLayoutPanel {
+                Dock = DockStyle.Fill, ColumnCount = 9, RowCount = 1, Margin = Padding.Empty,
+                BackColor = PageBack
+            };
+            sizeRow.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, 64F));
+            sizeRow.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, 20F));
+            sizeRow.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, 86F));
+            sizeRow.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, 32F));
+            sizeRow.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, 10F));
+            sizeRow.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, 20F));
+            sizeRow.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, 86F));
+            sizeRow.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, 32F));
+            sizeRow.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100F));
+            Label sizeLabel = MakeLabel("圈注尺寸", "圈注尺寸");
+            sizeLabel.ForeColor = TextColor;
+            Label widthLabel = MakeLabel("宽", "椭圆宽度");
+            widthLabel.ForeColor = Muted;
+            Label firstUnit = MakeLabel("mm", "宽度单位");
+            firstUnit.ForeColor = Muted;
+            firstUnit.Font = new Font(Font.FontFamily, 8.5F);
+            firstUnit.Margin = new Padding(3, 0, 0, 0);
+            Label heightLabel = MakeLabel("高", "椭圆高度");
+            heightLabel.ForeColor = Muted;
+            Label secondUnit = MakeLabel("mm", "高度单位");
+            secondUnit.ForeColor = Muted;
+            secondUnit.Font = new Font(Font.FontFamily, 8.5F);
+            secondUnit.Margin = new Padding(3, 0, 0, 0);
+            widthInput = MakeDimensionInput("椭圆宽度，毫米", 2);
+            heightInput = MakeDimensionInput("椭圆高度，毫米", 3);
+            widthInput.Dock = DockStyle.Fill;
+            heightInput.Dock = DockStyle.Fill;
+            widthInput.Margin = new Padding(0, 10, 0, 10);
+            heightInput.Margin = new Padding(0, 10, 0, 10);
+            widthInput.ValueChanged += DimensionValueChanged;
+            heightInput.ValueChanged += DimensionValueChanged;
+            sizeRow.Controls.Add(sizeLabel, 0, 0);
+            sizeRow.Controls.Add(widthLabel, 1, 0);
+            sizeRow.Controls.Add(widthInput, 2, 0);
+            sizeRow.Controls.Add(firstUnit, 3, 0);
+            sizeRow.Controls.Add(heightLabel, 5, 0);
+            sizeRow.Controls.Add(heightInput, 6, 0);
+            sizeRow.Controls.Add(secondUnit, 7, 0);
+            layout.Controls.Add(sizeRow, 0, 3);
+
+            Panel divider = new Panel {
+                Dock = DockStyle.Fill, BackColor = BorderColor, Margin = new Padding(0, 7, 0, 7)
+            };
+            layout.Controls.Add(divider, 0, 4);
+
+            Label hotkeyTitle = MakeLabel("快捷键", "快捷键");
+            hotkeyTitle.Font = new Font(Font.FontFamily, 11F, FontStyle.Bold);
+            hotkeyTitle.ForeColor = TextColor;
+            layout.Controls.Add(hotkeyTitle, 0, 5);
+
+            TableLayoutPanel hotkeyRow = new TableLayoutPanel {
+                Dock = DockStyle.Fill, ColumnCount = 3, RowCount = 1, Margin = Padding.Empty,
+                BackColor = PageBack
+            };
+            hotkeyRow.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, 78F));
+            hotkeyRow.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100F));
+            hotkeyRow.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, 64F));
+            Label hotkeyLabel = MakeLabel("操作快捷键", "取文字快捷键");
+            hotkeyLabel.ForeColor = TextColor;
+            hotkeyButton = MakeSecondaryButton(String.Empty, 8);
+            hotkeyButton.Margin = new Padding(0, 8, 8, 8);
+            hotkeyButton.Click += delegate { BeginHotkeyCapture(); };
+            clearHotkeyButton = MakeSecondaryButton("清除", 9);
+            clearHotkeyButton.Margin = new Padding(0, 8, 0, 8);
+            clearHotkeyButton.Click += delegate { SetHotkey(HotkeyBinding.Empty); };
+            hotkeyRow.Controls.Add(hotkeyLabel, 0, 0);
+            hotkeyRow.Controls.Add(hotkeyButton, 1, 0);
+            hotkeyRow.Controls.Add(clearHotkeyButton, 2, 0);
+            layout.Controls.Add(hotkeyRow, 0, 6);
+
+            TableLayoutPanel versionRow = new TableLayoutPanel {
+                Dock = DockStyle.Fill, ColumnCount = 2, RowCount = 1, Margin = Padding.Empty,
+                BackColor = PageBack
+            };
+            versionRow.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100F));
+            versionRow.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, 96F));
+            versionLabel = new Label {
+                Text = "软件版本", Dock = DockStyle.Fill, TextAlign = ContentAlignment.MiddleLeft,
+                ForeColor = Muted, Font = new Font(Font.FontFamily, 9F), AutoEllipsis = true
+            };
+            updateButton = MakeSecondaryButton("检查更新", 20);
+            updateButton.Margin = new Padding(0, 8, 0, 8);
+            updateButton.Click += delegate { Raise(CheckUpdateRequested); };
+            versionRow.Controls.Add(versionLabel, 0, 0);
+            versionRow.Controls.Add(updateButton, 1, 0);
+            layout.Controls.Add(new Panel {
+                Dock = DockStyle.Fill, BackColor = BorderColor, Margin = new Padding(0, 7, 0, 7)
+            }, 0, 8);
+            layout.Controls.Add(versionRow, 0, 9);
+
+            Label footer = new Label {
+                Text = "设置页仅调整标注参数", Dock = DockStyle.Fill,
+                TextAlign = ContentAlignment.MiddleLeft, ForeColor = Muted,
+                Font = new Font(Font.FontFamily, 8.5F)
+            };
+            layout.Controls.Add(footer, 0, 10);
+        }
+
+        private void ShowSettings(bool show)
+        {
+            if (settingsPage == null || mainPage == null)
+                return;
+            settingsPage.Visible = show;
+            mainPage.Visible = !show;
+            UpdateTitle();
+        }
+
+        private void UpdateTitle()
+        {
+            if (versionText.Length == 0)
+                return;
+            string title = "取字连续圈注 v" + versionText;
+            if (settingsPage != null && settingsPage.Visible)
+                title += " / 设置";
+            Text = title;
+        }
+
+        private void UpdateSummary()
+        {
+            if (summaryLabel == null)
+                return;
+            string separatorText = String.IsNullOrEmpty(separator) ? "无分隔符" : separator;
+            summaryLabel.Text = String.Format("{0:0.##}×{1:0.##}mm · {2}",
+                WidthMm, HeightMm, separatorText);
+        }
+
+        private void UpdateStatusDot()
+        {
+            if (statusDot == null)
+                return;
+            if (currentMode == "picking")
+                statusDot.ForeColor = Accent;
+            else if (currentMode == "stamping")
+                statusDot.ForeColor = Color.FromArgb(34, 181, 115);
+            else
+                statusDot.ForeColor = PausedDot;
+        }
+
+        private static void SetCueBanner(TextBox box, string text)
+        {
+            if (box == null || !box.IsHandleCreated)
+                return;
+            SendMessage(box.Handle, EmSetCueBanner, (IntPtr)1, text);
+        }
+
+        private static Button MakePrimaryButton(string text, int tabIndex)
+        {
+            Button button = new Button {
+                Text = text, AccessibleName = text, Dock = DockStyle.Fill,
+                FlatStyle = FlatStyle.Flat, BackColor = Accent, ForeColor = Color.White,
+                Font = new Font("Microsoft YaHei UI", 10F, FontStyle.Bold),
+                TabIndex = tabIndex, UseVisualStyleBackColor = false, Cursor = Cursors.Hand
+            };
+            button.FlatAppearance.BorderSize = 0;
+            button.FlatAppearance.MouseOverBackColor = Color.FromArgb(37, 92, 232);
+            button.FlatAppearance.MouseDownBackColor = Color.FromArgb(28, 78, 205);
+            return button;
+        }
+
+        private static Button MakeSecondaryButton(string text, int tabIndex)
+        {
+            Button button = new Button {
+                Text = text, AccessibleName = text, Dock = DockStyle.Fill,
+                FlatStyle = FlatStyle.Flat, BackColor = Color.White, ForeColor = TextColor,
+                Font = new Font("Microsoft YaHei UI", 10F),
+                TabIndex = tabIndex, UseVisualStyleBackColor = false, Cursor = Cursors.Hand
+            };
+            button.FlatAppearance.BorderSize = 1;
+            button.FlatAppearance.BorderColor = BorderColor;
+            button.FlatAppearance.MouseOverBackColor = Color.FromArgb(246, 249, 255);
+            button.FlatAppearance.MouseDownBackColor = Color.FromArgb(235, 241, 250);
+            button.EnabledChanged += delegate {
+                button.BackColor = button.Enabled ? Color.White : Color.FromArgb(237, 240, 245);
+                button.ForeColor = button.Enabled ? TextColor : Color.FromArgb(182, 189, 200);
+            };
+            return button;
+        }
+
+        [DllImport("user32.dll", CharSet = CharSet.Unicode)]
+        private static extern IntPtr SendMessage(IntPtr window, int message, IntPtr wParam, string lParam);
+
+        private const int EmSetCueBanner = 0x1501;
+
+        /// <summary>在标题栏和设置页显示版本号；传空值保持原标题。</summary>
         public void SetVersion(string version)
         {
             if (String.IsNullOrWhiteSpace(version))
                 return;
-            Text = "取字连续圈注 v" + version.Trim();
+            versionText = version.Trim();
+            if (versionLabel != null)
+                versionLabel.Text = "软件版本 v" + versionText;
+            UpdateTitle();
         }
 
         /// <summary>更新按钮的文字与可用状态。</summary>
@@ -556,6 +748,7 @@ namespace ClickCircle
             if (!changed)
                 return;
             RecomposeSubject();
+            UpdateSummary();
             if (!applyingSettings)
                 Raise(SeparatorChanged);
         }
@@ -644,6 +837,9 @@ namespace ClickCircle
             }
             hotkey = HotkeyBinding.ParseOrDefault(settings.PickHotkey);
             UpdateHotkeyButton();
+            UpdateSummary();
+            if (separatorInput != null)
+                separatorInput.SelectionLength = 0;
         }
 
         public PluginSettings GetSettings()
@@ -679,6 +875,7 @@ namespace ClickCircle
             }
             statusLabel.Text = status;
             UpdateButtonState();
+            UpdateStatusDot();
         }
 
         /// <summary>只改状态文字，不动当前模式（用于快捷键不可用等提示）。</summary>
@@ -784,6 +981,11 @@ namespace ClickCircle
             hotkeyButton.Text = capturingHotkey ? "请按新的组合键…" :
                 hotkey.IsEmpty ? "未设置（点击设置）" : display;
             hotkeyButton.AccessibleName = "取文字快捷键：" + display;
+            if (hotkeySummary != null)
+            {
+                hotkeySummary.Text = hotkey.IsEmpty ? "无" : display;
+                hotkeySummary.ForeColor = hotkey.IsEmpty ? Muted : TextColor;
+            }
             if (clearHotkeyButton != null)
                 clearHotkeyButton.Enabled = !hotkey.IsEmpty && !capturingHotkey;
         }
@@ -838,6 +1040,7 @@ namespace ClickCircle
 
         private void DimensionValueChanged(object sender, EventArgs e)
         {
+            UpdateSummary();
             if (!applyingSettings)
                 Raise(DimensionsChanged);
         }
