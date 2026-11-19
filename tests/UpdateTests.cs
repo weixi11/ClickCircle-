@@ -61,7 +61,9 @@ internal static class UpdateTests
                 Expect(text.Contains(@"C:\PluginDir"), "批处理目标目录");
                 Expect(text.Contains(@"C:\Editor\PDFXEdit.exe"), "批处理重启编辑器");
                 Expect(text.Contains("goto rollback"), "替换失败会回滚");
-                Expect(text.Contains("goto abort"), "等待超时会放弃");
+                Expect(text.Contains("taskkill /pid %PID% /f"), "进程不退时强制结束");
+                Expect(text.Contains("ClickCircle-update.log"), "更新过程写入日志");
+                Expect(text.Contains("start \"\" /d \"%EXEDIR%\""), "重启时使用编辑器目录");
                 Expect(!text.Contains("%~dp0") || text.Contains("del \"%~f0\""), "结束时删除自身");
                 Expect(new FileInfo(helper).Length < 4096, "批处理体积很小");
             }

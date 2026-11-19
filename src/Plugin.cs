@@ -195,7 +195,7 @@ namespace ClickCircle
         public string Name { get { return "取字连续圈注"; } }
         public string CopyrightInfo { get { return "ClickCircle 2026"; } }
         /// <summary>插件版本号，面板标题显示同一数值。</summary>
-        private const uint PluginVersionNumber = (1U << 16) | (7U << 8) | 0U;
+        private const uint PluginVersionNumber = (1U << 16) | (7U << 8) | 1U;
 
         public uint version { get { return PluginVersionNumber; } }
 
@@ -494,7 +494,19 @@ namespace ClickCircle
                 if (!UpdateService.StartHelper(helper, out error))
                     throw new IOException(error);
                 Log("Update scheduled " + tag);
-                RunOnPanel(delegate { if (Instance != null) Instance.Shutdown(0); });
+                RunOnPanel(delegate
+                {
+                    Process current = Process.GetCurrentProcess();
+                    Log("Update closing pid=" + current.Id);
+                    bool closed = false;
+                    try { closed = current.CloseMainWindow(); }
+                    catch (Exception closeError) { Log("Update close " + closeError.Message); }
+                    if (!closed && Instance != null)
+                    {
+                        try { Instance.Shutdown(0); }
+                        catch (Exception shutdownError) { Log("Update shutdown " + shutdownError.Message); }
+                    }
+                });
             }
             catch (Exception exception)
             {
