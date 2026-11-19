@@ -57,17 +57,20 @@ SHX 矩形坐标会先归一化，再交给编辑器转换，适用于倒置矩�
 D:\PDF-XChangeEditorPlusPortable\App\PDF-XChange\PDF Editor\Plugins.x64
 ```
 
-发行文件为 `dist\ClickCircle.pvp`、`dist\ClickCircle.Core.dll`、`dist\PDFXEdit.dll`，三者必须同目录。用脚本安装可记录文件归属，避免覆盖别人的插件：
+发行文件为 `dist\ClickCircle.pvp`、`dist\ClickCircle.Core.dll`、`dist\PDFXEdit.dll`，三者必须同目录。安装就是把这三个文件复制进 `Plugins.x64`：先退出编辑器，复制，再重开。
 
-```powershell
-.\install.ps1            # 安装/升级，写入 ClickCircle.install.json
-.\uninstall.ps1          # 按清单卸载，保留 PDF 与 Data\ClickCircle
-.\install.ps1 -WhatIf    # 预览
+简化脚本（Windows 批处理，双击即可，不需要改 PowerShell 执行策略）：
+
+```bat
+install.cmd                        # 安装/升级，先把旧文件备份到 output\install-backup-<时间>
+install.cmd "D:\...\PDF Editor"    # 脚本放在别处时指定编辑器目录
+uninstall.cmd                      # 卸载，只删三个插件文件，保留设置、日志和 PDF
+uninstall.cmd "D:\...\PDF Editor"  # 同上，显式指定编辑器目录
 ```
 
-脚本从不结束编辑器进程：检测到目标编辑器正在运行、且确有文件需要改动时直接报错退出。已存在的同名文件若不是本插件清单里记录的版本，同样拒绝覆盖。卸载只删清单里的三个文件，保留设置、日志和所有 PDF。
+脚本不结束编辑器进程：检测到目标编辑器正在运行就直接提示退出，不做任何改动；复制后逐字节校验，失败会报错。卸载前也会把三个文件备份到 `output\uninstall-backup-<时间>`。
 
-升级前保存 PDF 并正常关闭目标编辑器，然后运行安装脚本；安装完成后重开编辑器。安装清单中的 SHA-256 应与当前 `dist` 三个文件一致，最新安装与验证状态见 `VALIDATION.md`。
+升级前保存 PDF 并正常关闭目标编辑器，双击 `install.cmd`，再重开编辑器；面板标题和 `plugin.log` 里的 `Version` 行可用于确认版本。最新安装与验证状态见 `VALIDATION.md`。
 
 ## 从源码构建
 

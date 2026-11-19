@@ -9,6 +9,8 @@
 - 构建与测试：`PanelSizeTests` 增补 4 项（默认标题不带版本号、`SetVersion` 后标题为“取字连续圈注 v9.8.7”、空版本号保持原标题、`VersionText` 为三段点分十进制）；12 个测试程序共 811 项通过（原 807 + 4）。`version` 改为 1.6.5，`package.ps1` 默认版本改为 1.6.5。
 - 本机没有 `build.ps1` 需要的 `PXCEditorCore.x64.dll`，按相同参数用 csc/ilasm 引用 `dist\PDFXEdit.dll` 编译（`/codepage:65001`，资源 `ocr-helper.ps1`）。
 - 装机：2026-11-19 09:28，旧 1.6.4 三文件、清单、设置与日志备份到 `output\install-backup-1.6.4-20261119-092741`；`Plugins.x64` 三者 SHA-256 与 `dist` 一致：Core `E0E2EC9743A90BF4675846826688B86A88158A1FBA67CEF6BC4E11F5123DE87A`、pvp `B055D492FF88F462FA931937F185F3067FD203726671412236B926629B24A8CF`、PDFXEdit.dll `2C8C6BA1F29654898AFBA5F7C566F9853E4411E6E05F4B963C93AC2751E208C1`。重开编辑器日志 `09:28:25.062 Hotkey Q via hook`、`09:28:25.073 Version 1.6.5`、`09:28:25.073 Init OK`；快捷键 `Q`、14 × 15 mm 与主题历史保留。
+- 安装方式简化：用 `install.cmd` / `uninstall.cmd` 取代 `install.ps1` / `uninstall.ps1`。批处理只做四件事——检查编辑器未运行、备份旧的三文件、复制并逐字节校验、提示重开；卸载先备份再删除三个文件，保留设置与日志。纯 ASCII 文本，不受 PowerShell 执行策略限制，双击即可运行；`ClickCircle.install.json` 清单机制随之移除。
+- 沙箱验证（临时目录模拟编辑器）：`install.cmd` 把旧 `ClickCircle.Core.dll` 备份到 `output\install-backup-<时间>` 后复制三个新文件；`uninstall.cmd` 删除三个文件并留下 `output\uninstall-backup-<时间>`；模拟目录里放 `PDFXEdit.exe` 且真有同名进程运行时，安装被正确拒绝并返回 1。
 - 未覆盖：150% 缩放下标题栏是否截断需人工确认（最小客户区宽度 440，标题约 16 个字符）。
 
 ## 早前（1.6.4）：面板排版收敛
