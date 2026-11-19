@@ -1,9 +1,11 @@
 using System;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.Drawing;
 using System.IO;
 using System.Reflection;
 using System.Runtime.InteropServices;
+using System.Threading;
 using System.Windows.Forms;
 using PDFXEdit;
 
@@ -18,12 +20,13 @@ namespace ClickCircle
         private CircleTool tool;
         private IUIX_Cmd command;
         private HotkeyService hotkey;
-        private Timer timer;
+        private System.Windows.Forms.Timer timer;
         private uint boundDocument;
         private uint observedDocument;
         private bool changingTool;
         private bool unloading;
         private int ocrGeneration;
+        private bool updateCheckRunning;
         private OcrReviewDialog ocrReview;
         private readonly Dictionary<uint, int> previousTools = new Dictionary<uint, int>();
         private readonly HashSet<ulong> installedFrames = new HashSet<ulong>();
@@ -127,7 +130,7 @@ namespace ClickCircle
                 if (!hotkey.IsActive)
                     Log("Hotkey unavailable: " + hotkey.Error);
                 ApplyHotkey(Panel.Hotkey);
-                timer = new Timer { Interval = 150 };
+                timer = new System.Windows.Forms.Timer { Interval = 150 };
                 timer.Tick += OnTick;
                 timer.Start();
                 OnTick(null, EventArgs.Empty);
@@ -192,7 +195,7 @@ namespace ClickCircle
         public string Name { get { return "取字连续圈注"; } }
         public string CopyrightInfo { get { return "ClickCircle 2026"; } }
         /// <summary>插件版本号，面板标题显示同一数值。</summary>
-        private const uint PluginVersionNumber = (1U << 16) | (6U << 8) | 5U;
+        private const uint PluginVersionNumber = (1U << 16) | (6U << 8) | 6U;
 
         public uint version { get { return PluginVersionNumber; } }
 
@@ -230,6 +233,7 @@ namespace ClickCircle
             Panel.HotkeyChanged += OnHotkeyChanged;
             Panel.HotkeyCaptureStarted += OnHotkeyCaptureStarted;
             Panel.HotkeyCaptureStopped += OnHotkeyCaptureStopped;
+            Panel.CheckUpdateRequested += CheckForUpdates;
         }
 
         private void OnHotkeyCaptureStarted()
@@ -378,6 +382,146 @@ namespace ClickCircle
             string subject = Panel == null || Panel.IsDisposed ? String.Empty : Panel.Subject;
             PauseWithStatus("已完成标注，主题保留可继续标注");
             Log("Stamping finished subject=" + subject);
+        }
+
+        // ── 在线更新（GitHub 公共仓库） ──────────────────────────────────
+
+        private void CheckForUpdates()
+        {
+            if (updateCheckRunning || unloading) return;
+            updateCheckRunning = true;
+            if (Panel != null && !Panel.IsDisposed)
+            {
+                Panel.SetUpdateState("检查中…", false);
+                Panel.SetStatus("正在检查更新…");
+            }
+            Log("Update check started");
+            ThreadPool.QueueUserWorkItem(delegate
+            {
+                string error;
+                string tag = UpdateService.GetLatestTag(out error);
+                if (tag == null)
+                {
+                    FinishUpdateCheck("检查更新失败：" + error);
+                    return;
+                }
+                if (UpdateService.CompareVersions(tag, VersionText) <= 0)
+                {
+                    FinishUpdateCheck("已是最新版本 " + VersionText);
+                    return;
+                }
+                Log("Update available " + tag);
+                RunOnPanel(delegate { ConfirmUpdate(tag); });
+            });
+        }
+
+        private void FinishUpdateCheck(string status)
+        {
+            updateCheckRunning = false;
+            RunOnPanel(delegate
+            {
+                if (Panel == null || Panel.IsDisposed) return;
+                Panel.SetUpdateState("检查更新", true);
+                Panel.SetStatus(status);
+            });
+        }
+
+        private void ConfirmUpdate(string tag)
+        {
+            if (Panel == null || Panel.IsDisposed)
+            {
+                updateCheckRunning = false;
+                return;
+            }
+            string question = "发现新版本 " + tag + "（当前 " + VersionText + "）。\r\n\r\n" +
+                "更新会先关闭编辑器，替换插件文件后自动重启。\r\n" +
+                "有未保存的文档时会取消本次更新。\r\n\r\n现在更新吗？";
+            if (MessageBox.Show(Panel, question, "检查更新", MessageBoxButtons.YesNo,
+                    MessageBoxIcon.Question) != DialogResult.Yes)
+            {
+                updateCheckRunning = false;
+                Panel.SetUpdateState("检查更新", true);
+                Panel.SetStatus("已取消更新");
+                return;
+            }
+            if (HasUnsavedDocuments())
+            {
+                updateCheckRunning = false;
+                Panel.SetUpdateState("检查更新", true);
+                Panel.SetStatus("有未保存的文档，已取消更新");
+                MessageBox.Show(Panel, "还有未保存的文档，请先保存后再更新。", "检查更新",
+                    MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                return;
+            }
+            Panel.SetUpdateState("下载中…", false);
+            Panel.SetStatus("正在下载 " + tag + "…");
+            Log("Update download started " + tag);
+            ThreadPool.QueueUserWorkItem(delegate { DownloadAndApply(tag); });
+        }
+
+        private bool HasUnsavedDocuments()
+        {
+            try
+            {
+                for (uint index = 0; index < Instance.DocCount; index++)
+                {
+                    IPXV_Document document = Instance.get_Doc(index);
+                    if (document != null && document.Modified)
+                        return true;
+                }
+                return false;
+            }
+            catch (Exception exception)
+            {
+                Log("Unsaved check " + exception.Message);
+                return true;
+            }
+        }
+
+        private void DownloadAndApply(string tag)
+        {
+            string stage = Path.Combine(Path.GetTempPath(),
+                "ClickCircle-update-" + Guid.NewGuid().ToString("N"));
+            try
+            {
+                string error;
+                if (!UpdateService.Download(tag, stage, out error))
+                    throw new IOException(error);
+                string pluginDirectory = Path.GetDirectoryName(Assembly.GetExecutingAssembly().Location);
+                string editorPath = Process.GetCurrentProcess().MainModule.FileName;
+                string helper = UpdateService.CreateHelper(stage, pluginDirectory, editorPath,
+                    Process.GetCurrentProcess().Id);
+                if (!UpdateService.StartHelper(helper, out error))
+                    throw new IOException(error);
+                Log("Update scheduled " + tag);
+                RunOnPanel(delegate { if (Instance != null) Instance.Shutdown(0); });
+            }
+            catch (Exception exception)
+            {
+                Log("Update FAILED " + exception);
+                try
+                {
+                    if (Directory.Exists(stage))
+                        Directory.Delete(stage, true);
+                }
+                catch (Exception cleanup) { Log("Update cleanup " + cleanup.Message); }
+                updateCheckRunning = false;
+                RunOnPanel(delegate
+                {
+                    if (Panel == null || Panel.IsDisposed) return;
+                    Panel.SetUpdateState("检查更新", true);
+                    Panel.SetStatus("更新失败：" + exception.Message);
+                });
+            }
+        }
+
+        private void RunOnPanel(Action action)
+        {
+            StampPanel panel = Panel;
+            if (panel == null || panel.IsDisposed)
+                return;
+            try { panel.BeginInvoke(action); }
+            catch (Exception exception) { Log("Update UI " + exception.Message); }
         }
 
         private void Activate(StampMode next)

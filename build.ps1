@@ -48,6 +48,7 @@ $pluginPath = Join-Path $stagePath 'ClickCircle.Core.dll'
     (Join-Path $PSScriptRoot 'src\OcrService.cs') `
     (Join-Path $PSScriptRoot 'src\OcrRegionRenderer.cs') `
     (Join-Path $PSScriptRoot 'src\OcrReviewDialog.cs') `
+    (Join-Path $PSScriptRoot 'src\UpdateService.cs') `
     (Join-Path $PSScriptRoot 'src\HotkeyBinding.cs') `
     (Join-Path $PSScriptRoot 'src\HotkeyScope.cs') `
     (Join-Path $PSScriptRoot 'src\HotkeyService.cs')
@@ -95,7 +96,7 @@ if ($RunTests) {
     & $serviceTestPath
     if ($LASTEXITCODE -ne 0) { throw 'Hotkey routing tests failed.' }
 
-    foreach ($testName in @('RegionPickerTests', 'SeparatorPanelTests', 'ShxTextTests', 'OcrTests', 'HistoryPreferenceTests', 'CursorTests', 'RightClickTests', 'PanelSizeTests')) {
+    foreach ($testName in @('RegionPickerTests', 'SeparatorPanelTests', 'ShxTextTests', 'OcrTests', 'HistoryPreferenceTests', 'CursorTests', 'RightClickTests', 'PanelSizeTests', 'UpdateTests')) {
         $selectionTestPath = Join-Path $stagePath ($testName + '.exe')
         & $compilerPath /nologo /target:exe /platform:x64 /optimize+ `
             "/out:$selectionTestPath" "/reference:$pluginPath" "/reference:$interopPath" `

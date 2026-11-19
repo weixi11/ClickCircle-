@@ -20,6 +20,7 @@ namespace ClickCircle
         private readonly Button pauseButton;
         private readonly Button hotkeyButton;
         private readonly Button clearHotkeyButton;
+        private readonly Button updateButton;
         private readonly Label statusLabel;
         private readonly TextBox historySearch;
         private readonly DataGridView historyGrid;
@@ -47,6 +48,7 @@ namespace ClickCircle
         public event Action HotkeyCaptureStopped;
         public event Action HistoryChanged;
         public event Action OcrLanguageChanged;
+        public event Action CheckUpdateRequested;
 
         /// <summary>用户拖动窗口边缘改尺寸后触发，用于记住面板大小。</summary>
         public event Action PanelSizeChanged;
@@ -221,13 +223,26 @@ namespace ClickCircle
             hotkeyRow.Controls.Add(clearHotkeyButton, 2, 0);
             layout.Controls.Add(hotkeyRow, 0, 4);
 
+            TableLayoutPanel statusRow = new TableLayoutPanel();
+            statusRow.Dock = DockStyle.Fill;
+            statusRow.ColumnCount = 2;
+            statusRow.RowCount = 1;
+            statusRow.Margin = Padding.Empty;
+            statusRow.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100F));
+            statusRow.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, 104F));
             statusLabel = new Label();
             statusLabel.Dock = DockStyle.Fill;
             statusLabel.Margin = new Padding(0, 5, 0, 0);
             statusLabel.TextAlign = ContentAlignment.MiddleLeft;
             statusLabel.AccessibleName = "圈注状态";
             statusLabel.AutoEllipsis = false;
-            layout.Controls.Add(statusLabel, 0, 5);
+            updateButton = MakeButton("检查更新", 20);
+            updateButton.AccessibleName = "检查更新";
+            updateButton.Margin = new Padding(6, 2, 0, 2);
+            updateButton.Click += delegate { Raise(CheckUpdateRequested); };
+            statusRow.Controls.Add(statusLabel, 0, 0);
+            statusRow.Controls.Add(updateButton, 1, 0);
+            layout.Controls.Add(statusRow, 0, 5);
 
             TableLayoutPanel historyLayout = new TableLayoutPanel {
                 Dock = DockStyle.Fill, ColumnCount = 1, RowCount = 3, Margin = Padding.Empty
@@ -306,7 +321,7 @@ namespace ClickCircle
             int sizeTall = PreferredHeight(widthInput, 24) + 16;
             int commandTall = PreferredHeight(pickButton, 28) + 14;
             int hotkeyTall = PreferredHeight(hotkeyButton, 28) + 14;
-            int statusTall = Font.Height + 14;
+            int statusTall = Math.Max(Font.Height + 14, PreferredHeight(updateButton, 26) + 6);
 
             layout.RowStyles[0] = new RowStyle(SizeType.Absolute, textRow);
             layout.RowStyles[1] = new RowStyle(SizeType.Absolute, comboTall);
@@ -358,6 +373,15 @@ namespace ClickCircle
             if (String.IsNullOrWhiteSpace(version))
                 return;
             Text = "取字连续圈注 v" + version.Trim();
+        }
+
+        /// <summary>更新按钮的文字与可用状态。</summary>
+        public void SetUpdateState(string text, bool enabled)
+        {
+            if (updateButton == null)
+                return;
+            updateButton.Text = String.IsNullOrWhiteSpace(text) ? "检查更新" : text;
+            updateButton.Enabled = enabled;
         }
 
         public string Subject
