@@ -195,7 +195,7 @@ namespace ClickCircle
         public string Name { get { return "取字连续圈注"; } }
         public string CopyrightInfo { get { return "ClickCircle 2026"; } }
         /// <summary>插件版本号，面板标题显示同一数值。</summary>
-        private const uint PluginVersionNumber = (1U << 16) | (7U << 8) | 4U;
+        private const uint PluginVersionNumber = (1U << 16) | (7U << 8) | 5U;
 
         public uint version { get { return PluginVersionNumber; } }
 
@@ -554,8 +554,12 @@ namespace ClickCircle
                 if (document.ActiveTool == null || document.ActiveTool.ID != tool.ID)
                     previousTools[document.ID] = document.ActiveTool == null
                         ? Instance.Str2ID("tool.hand", false) : document.ActiveTool.ID;
-                if (next == StampMode.Picking && mode != StampMode.Picking)
+                // 取字状态下再按 Q 或再点“取文字”＝重新取字：清空已取片段和主题，从第一段重新累积。
+                bool restartingPick = next == StampMode.Picking && mode == StampMode.Picking;
+                if (next == StampMode.Picking)
                     Panel.ResetPickedFragments();
+                if (restartingPick)
+                    Panel.Subject = String.Empty;
                 SetMode(next, next == StampMode.Picking ? PickingHint : null);
                 changingTool = true;
                 try { document.ActivateTool(tool.ID); }
@@ -563,6 +567,8 @@ namespace ClickCircle
                 if (document.ActiveView != null && document.ActiveView.PagesView != null)
                     document.ActiveView.PagesView.Obj.SetInputFocus(false);
                 Log(next + " doc=" + boundDocument);
+                if (restartingPick)
+                    Log("Picking restarted doc=" + boundDocument);
             }
             catch (Exception exception)
             {
