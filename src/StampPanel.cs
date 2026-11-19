@@ -45,6 +45,7 @@ namespace ClickCircle
         private Label summaryLabel;
         private Label statusDot;
         private Label versionLabel;
+        private PickHintForm pickHint;
         private string versionText = String.Empty;
 
         private static readonly Color Accent = Color.FromArgb(47, 107, 255);
@@ -574,6 +575,32 @@ namespace ClickCircle
                 return;
             updateButton.Text = String.IsNullOrWhiteSpace(text) ? "检查更新" : text;
             updateButton.Enabled = enabled;
+        }
+
+        /// <summary>取字成功时在鼠标旁显示短暂提示，例如“已取 2 段 · LI-282”。</summary>
+        public void ShowPickHint(string fragment, int count)
+        {
+            string body = (fragment ?? String.Empty).Trim();
+            if (body.Length > 44)
+                body = body.Substring(0, 44) + "…";
+            if (body.Length == 0 && count <= 0)
+                return;
+            string text = count > 0
+                ? "已取 " + count + " 段" + (body.Length > 0 ? " · " + body : String.Empty)
+                : body;
+            if (pickHint == null || pickHint.IsDisposed)
+                pickHint = new PickHintForm();
+            pickHint.ShowAt(text, Cursor.Position);
+        }
+
+        protected override void Dispose(bool disposing)
+        {
+            if (disposing && pickHint != null)
+            {
+                pickHint.Dispose();
+                pickHint = null;
+            }
+            base.Dispose(disposing);
         }
 
         public string Subject

@@ -38,6 +38,7 @@ $pluginPath = Join-Path $stagePath 'ClickCircle.Core.dll'
     /reference:System.Windows.Forms.dll /reference:System.Drawing.dll `
     (Join-Path $PSScriptRoot 'src\Plugin.cs') `
     (Join-Path $PSScriptRoot 'src\StampPanel.cs') `
+    (Join-Path $PSScriptRoot 'src\PickHint.cs') `
     (Join-Path $PSScriptRoot 'src\SubjectHistory.cs') `
     (Join-Path $PSScriptRoot 'src\ModeCursor.cs') `
     (Join-Path $PSScriptRoot 'src\RightClickRouting.cs') `

@@ -1,6 +1,6 @@
 [CmdletBinding()]
 param(
-    [string] $Version = '1.7.3',
+    [string] $Version = '1.7.4',
     [string] $OutputDirectory = (Join-Path $PSScriptRoot 'release'),
     [switch] $IncludeDrawingDemo
 )
@@ -30,6 +30,7 @@ $requiredFiles = @(
     'src\OcrRegionRenderer.cs',
     'src\OcrReviewDialog.cs',
     'src\StampPanel.cs',
+    'src\PickHint.cs',
     'src\SubjectHistory.cs',
     'src\ModeCursor.cs',
     'src\RightClickRouting.cs',

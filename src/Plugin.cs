@@ -195,7 +195,7 @@ namespace ClickCircle
         public string Name { get { return "取字连续圈注"; } }
         public string CopyrightInfo { get { return "ClickCircle 2026"; } }
         /// <summary>插件版本号，面板标题显示同一数值。</summary>
-        private const uint PluginVersionNumber = (1U << 16) | (7U << 8) | 3U;
+        private const uint PluginVersionNumber = (1U << 16) | (7U << 8) | 4U;
 
         public uint version { get { return PluginVersionNumber; } }
 
@@ -672,6 +672,7 @@ namespace ClickCircle
                     }
                     Panel.AppendPickedFragments(new[] { text });
                     SetMode(StampMode.Picking, PickingHint);
+                    Panel.ShowPickHint(text, Panel.PickedFragmentCount);
                     Log("Picked " + text + " count=" + Panel.PickedFragmentCount);
                     return;
                 }
@@ -714,6 +715,7 @@ namespace ClickCircle
                 }
                 Panel.AppendPickedFragments(result.Fragments);
                 SetMode(StampMode.Picking, PickingHint);
+                Panel.ShowPickHint(String.Join(" / ", result.Fragments), Panel.PickedFragmentCount);
                 Log("BoxPicked count=" + result.Fragments.Length +
                     " total=" + Panel.PickedFragmentCount + " subject=" + Panel.Subject);
             }
@@ -776,6 +778,8 @@ namespace ClickCircle
                                 // 取字过程中框选落到 OCR：识别结果并入本次取字，右键再完成。
                                 Panel.AppendPickedFragments(review.ConfirmedFragments);
                                 SetMode(StampMode.Picking, PickingHint);
+                                Panel.ShowPickHint(String.Join(" / ", review.ConfirmedFragments),
+                                    Panel.PickedFragmentCount);
                             }
                             else
                             {
