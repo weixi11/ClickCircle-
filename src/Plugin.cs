@@ -195,7 +195,7 @@ namespace ClickCircle
         public string Name { get { return "取字连续圈注"; } }
         public string CopyrightInfo { get { return "ClickCircle 2026"; } }
         /// <summary>插件版本号，面板标题显示同一数值。</summary>
-        private const uint PluginVersionNumber = (1U << 16) | (7U << 8) | 5U;
+        private const uint PluginVersionNumber = (1U << 16) | (7U << 8) | 6U;
 
         public uint version { get { return PluginVersionNumber; } }
 
@@ -393,7 +393,7 @@ namespace ClickCircle
             if (Panel != null && !Panel.IsDisposed)
             {
                 Panel.SetUpdateState("检查中…", false);
-                Panel.SetStatus("正在检查更新…");
+                Panel.SetUpdateStatus("正在检查更新…");
             }
             Log("Update check started");
             ThreadPool.QueueUserWorkItem(delegate
@@ -402,12 +402,12 @@ namespace ClickCircle
                 string tag = UpdateService.GetLatestTag(out error);
                 if (tag == null)
                 {
-                    FinishUpdateCheck("检查更新失败：" + error);
+                    FinishUpdateCheck("检查更新失败：" + error, true);
                     return;
                 }
                 if (UpdateService.CompareVersions(tag, VersionText) <= 0)
                 {
-                    FinishUpdateCheck("已是最新版本 " + VersionText);
+                    FinishUpdateCheck("已是最新版本 " + VersionText, false);
                     return;
                 }
                 Log("Update available " + tag);
@@ -415,14 +415,14 @@ namespace ClickCircle
             });
         }
 
-        private void FinishUpdateCheck(string status)
+        private void FinishUpdateCheck(string status, bool error)
         {
             updateCheckRunning = false;
             RunOnPanel(delegate
             {
                 if (Panel == null || Panel.IsDisposed) return;
                 Panel.SetUpdateState("检查更新", true);
-                Panel.SetStatus(status);
+                Panel.SetUpdateStatus(status, error);
             });
         }
 
@@ -441,20 +441,20 @@ namespace ClickCircle
             {
                 updateCheckRunning = false;
                 Panel.SetUpdateState("检查更新", true);
-                Panel.SetStatus("已取消更新");
+                Panel.SetUpdateStatus("已取消更新");
                 return;
             }
             if (HasUnsavedDocuments())
             {
                 updateCheckRunning = false;
                 Panel.SetUpdateState("检查更新", true);
-                Panel.SetStatus("有未保存的文档，已取消更新");
+                Panel.SetUpdateStatus("有未保存的文档，已取消更新", true);
                 MessageBox.Show(Panel, "还有未保存的文档，请先保存后再更新。", "检查更新",
                     MessageBoxButtons.OK, MessageBoxIcon.Warning);
                 return;
             }
             Panel.SetUpdateState("下载中…", false);
-            Panel.SetStatus("正在下载 " + tag + "…");
+            Panel.SetUpdateStatus("正在下载 " + tag + "…");
             Log("Update download started " + tag);
             ThreadPool.QueueUserWorkItem(delegate { DownloadAndApply(tag); });
         }
@@ -522,7 +522,7 @@ namespace ClickCircle
                 {
                     if (Panel == null || Panel.IsDisposed) return;
                     Panel.SetUpdateState("检查更新", true);
-                    Panel.SetStatus("更新失败：" + exception.Message);
+                    Panel.SetUpdateStatus("更新失败：" + exception.Message, true);
                 });
             }
         }

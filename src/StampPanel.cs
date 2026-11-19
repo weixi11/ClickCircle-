@@ -45,6 +45,8 @@ namespace ClickCircle
         private Label summaryLabel;
         private Label statusDot;
         private Label versionLabel;
+        private Label settingsHint;
+        private Label updateStatusLabel;
         private PickHintForm pickHint;
         private string versionText = String.Empty;
 
@@ -444,6 +446,27 @@ namespace ClickCircle
             hotkeyRow.Controls.Add(clearHotkeyButton, 2, 0);
             layout.Controls.Add(hotkeyRow, 0, 6);
 
+            TableLayoutPanel infoPanel = new TableLayoutPanel {
+                Dock = DockStyle.Fill, ColumnCount = 1, RowCount = 3, Margin = Padding.Empty,
+                BackColor = PageBack
+            };
+            infoPanel.RowStyles.Add(new RowStyle(SizeType.AutoSize));
+            infoPanel.RowStyles.Add(new RowStyle(SizeType.AutoSize));
+            infoPanel.RowStyles.Add(new RowStyle(SizeType.Percent, 100F));
+            settingsHint = new Label {
+                Text = "取字与主题历史在主页操作；这里的分隔符、圈注尺寸和快捷键修改后立即生效。",
+                AutoSize = true, ForeColor = Muted, Font = new Font(Font.FontFamily, 8.5F),
+                Margin = new Padding(0, 8, 0, 0), MaximumSize = new Size(400, 0)
+            };
+            updateStatusLabel = new Label {
+                Text = String.Empty, AutoSize = true, ForeColor = TextColor,
+                Font = new Font(Font.FontFamily, 9F), Margin = new Padding(0, 10, 0, 0),
+                MaximumSize = new Size(400, 0)
+            };
+            infoPanel.Controls.Add(settingsHint, 0, 0);
+            infoPanel.Controls.Add(updateStatusLabel, 0, 1);
+            layout.Controls.Add(infoPanel, 0, 7);
+
             TableLayoutPanel versionRow = new TableLayoutPanel {
                 Dock = DockStyle.Fill, ColumnCount = 2, RowCount = 1, Margin = Padding.Empty,
                 BackColor = PageBack
@@ -575,6 +598,15 @@ namespace ClickCircle
                 return;
             updateButton.Text = String.IsNullOrWhiteSpace(text) ? "检查更新" : text;
             updateButton.Enabled = enabled;
+        }
+
+        /// <summary>设置页底部的更新/提示文字；error 为真时用红色。</summary>
+        public void SetUpdateStatus(string text, bool error = false)
+        {
+            if (updateStatusLabel == null)
+                return;
+            updateStatusLabel.Text = text ?? String.Empty;
+            updateStatusLabel.ForeColor = error ? Color.FromArgb(208, 69, 63) : TextColor;
         }
 
         /// <summary>取字成功时在鼠标旁显示短暂提示，例如“已取 2 段 · LI-282”。</summary>
