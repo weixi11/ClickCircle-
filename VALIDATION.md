@@ -9,6 +9,7 @@
 - 根因二：批处理重启命令用了 `start /d "%EXE%\.."`，把文件路径当成目录；即使替换成功也无法重启编辑器。
 - 修复：关闭编辑器改用 `Process.CloseMainWindow()`（返回 false 才回退 `Shutdown(0)`）；批处理等待 15 次（约 30 秒）后执行 `taskkill /pid %PID% /f` 再替换；重启目录用 `for %%D in ("%EXE%") do set "EXEDIR=%%~dpD"` 计算；批处理把开始/强制结束/替换/回滚写入 `%TEMP%\ClickCircle-update.log`。
 - 验证：用复制出来的当前程序冒充编辑器，在临时目录跑两条路径——正常退出（外部结束 PID）与卡住不退（批处理强杀）——均完成三文件替换、重启、暂存目录清理、批处理自删，`FAILURES=0`；`UpdateTests` 增补 2 项（taskkill/日志/重启目录），13 个测试程序共 839 项通过。
+- 装机：先结束两个无窗口的 1.6.6 残留进程（PID 20000、30640，否则 DLL 被占用），再用 `install.cmd` 安装；旧 1.6.6 三文件与设置备份在 `output\install-backup-20261119-165429`。`Plugins.x64` 三者 SHA-256 与 `dist` 一致：Core `2B76EAC58B9E6FB80B57E3EF606E2AD64A4FD5264279958F5A6DB2D62FE95659`、pvp `B055D492FF88F462FA931937F185F3067FD203726671412236B926629B24A8CF`、PDFXEdit.dll `2C8C6BA1F29654898AFBA5F7C566F9853E4411E6E05F4B963C93AC2751E208C1`。重开日志 `16:54:34.897 Version 1.7.1`、`16:54:34.914 Init OK`。
 - 未覆盖：仍需在真机上从 1.7.1 升级到下一个版本做一次完整验证。
 
 ## 早前（1.7.0）：主页 + 设置页的界面重排
