@@ -179,7 +179,7 @@ namespace ClickCircle
             text.AppendLine("    if errorlevel 1 goto rollback");
             text.AppendLine(")");
             text.AppendLine("echo [%DATE% %TIME%] replaced >> \"%LOG%\" 2>&1");
-            text.AppendLine("start \"\" /d \"%EXEDIR%\" \"%EXE%\"");
+            text.AppendLine("if exist \"%EXE%\" start \"\" /d \"%EXEDIR%\" \"%EXE%\"");
             text.AppendLine("rmdir /s /q \"%STAGE%\" >nul 2>&1");
             text.AppendLine("del \"%~f0\" >nul 2>&1");
             text.AppendLine("exit /b 0");
@@ -188,11 +188,13 @@ namespace ClickCircle
             text.AppendLine("for %%F in (ClickCircle.pvp ClickCircle.Core.dll PDFXEdit.dll) do (");
             text.AppendLine("    if exist \"%BACK%\\%%F\" copy /y \"%BACK%\\%%F\" \"%TARGET%\\%%F\" >nul 2>&1");
             text.AppendLine(")");
-            text.AppendLine("start \"\" /d \"%EXEDIR%\" \"%EXE%\"");
+            text.AppendLine("if exist \"%EXE%\" start \"\" /d \"%EXEDIR%\" \"%EXE%\"");
             text.AppendLine("rmdir /s /q \"%STAGE%\" >nul 2>&1");
             text.AppendLine("del \"%~f0\" >nul 2>&1");
             text.AppendLine("exit /b 1");
-            File.WriteAllText(helperPath, text.ToString(), Encoding.ASCII);
+            // 批处理里含编辑器安装路径，必须用系统代码页（中文 Windows 为 GBK）；
+            // 用 ASCII 会把“桌面”这类目录写成问号，导致替换和重启全部失败。
+            File.WriteAllText(helperPath, text.ToString(), Encoding.Default);
             return helperPath;
         }
 

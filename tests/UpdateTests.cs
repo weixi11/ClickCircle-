@@ -1,5 +1,6 @@
 using System;
 using System.IO;
+using System.Text;
 using ClickCircle;
 
 // 在线更新：版本比较、标签解析、更新批处理生成（不访问网络）。
@@ -64,6 +65,21 @@ internal static class UpdateTests
                 Expect(text.Contains("taskkill /pid %PID% /f"), "进程不退时强制结束");
                 Expect(text.Contains("ClickCircle-update.log"), "更新过程写入日志");
                 Expect(text.Contains("start \"\" /d \"%EXEDIR%\""), "重启时使用编辑器目录");
+                Expect(text.Contains("if exist \"%EXE%\" start"), "路径不存在时不会弹出错误框");
+
+                string chineseStage = Path.Combine(Path.GetTempPath(), "测试-" + Guid.NewGuid().ToString("N"));
+                string chineseHelper = UpdateService.CreateHelper(chineseStage,
+                    @"C:\测试目录\Plugins.x64", @"C:\测试目录\PDFXEdit.exe", 42);
+                try
+                {
+                    string chineseText = File.ReadAllText(chineseHelper, Encoding.Default);
+                    Expect(chineseText.Contains(@"C:\测试目录\PDFXEdit.exe"), "中文编辑器路径按系统代码页写入");
+                    Expect(chineseText.Contains(@"C:\测试目录\Plugins.x64"), "中文插件目录按系统代码页写入");
+                }
+                finally
+                {
+                    if (File.Exists(chineseHelper)) File.Delete(chineseHelper);
+                }
                 Expect(!text.Contains("%~dp0") || text.Contains("del \"%~f0\""), "结束时删除自身");
                 Expect(new FileInfo(helper).Length < 4096, "批处理体积很小");
             }
