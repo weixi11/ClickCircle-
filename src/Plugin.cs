@@ -131,6 +131,7 @@ namespace ClickCircle
                 timer.Tick += OnTick;
                 timer.Start();
                 OnTick(null, EventArgs.Empty);
+                Log("Version " + VersionText);
                 Log("Init OK");
             }
             catch (Exception exception)
@@ -190,7 +191,21 @@ namespace ClickCircle
         public Guid _GUID { get { return new Guid("445F9883-A182-4A3F-A4E3-3FCA78F314EC"); } }
         public string Name { get { return "取字连续圈注"; } }
         public string CopyrightInfo { get { return "ClickCircle 2026"; } }
-        public uint version { get { return (1U << 16) | (6U << 8) | 4U; } }
+        /// <summary>插件版本号，面板标题显示同一数值。</summary>
+        private const uint PluginVersionNumber = (1U << 16) | (6U << 8) | 5U;
+
+        public uint version { get { return PluginVersionNumber; } }
+
+        /// <summary>点分十进制版本文本，例如 1.6.5。</summary>
+        public static string VersionText
+        {
+            get
+            {
+                return ((PluginVersionNumber >> 16) & 0xFFFFU).ToString() + "." +
+                    ((PluginVersionNumber >> 8) & 0xFFU).ToString() + "." +
+                    (PluginVersionNumber & 0xFFU).ToString();
+            }
+        }
         public uint VendorID { get { return 0; } }
         public string Description { get { return "取文字后，以固定尺寸连续添加红色椭圆标注。"; } }
         public string LegalInfo { get { return "Local annotation tool."; } }
@@ -202,6 +217,7 @@ namespace ClickCircle
         {
             if (Panel != null && !Panel.IsDisposed) return;
             Panel = new StampPanel(PluginSettings.Load(settingsPath));
+            Panel.SetVersion(VersionText);
             Panel.PickRequested += Pick;
             Panel.OcrRequested += PickOcr;
             Panel.ResumeRequested += Resume;

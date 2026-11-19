@@ -35,7 +35,14 @@ internal static class PanelSizeTests
             Expect(panel.MinimumSize.Width >= StampPanel.MinimumPanelWidth &&
                 panel.MinimumSize.Height >= StampPanel.MinimumPanelHeight,
                 "窗口最小尺寸不小于客户区下限，实际 " + panel.MinimumSize);
+            Expect(panel.Text == "取字连续圈注", "默认标题不带版本号");
+            panel.SetVersion("9.8.7");
+            Expect(panel.Text == "取字连续圈注 v9.8.7", "标题显示版本号，实际 " + panel.Text);
+            panel.SetVersion("  ");
+            Expect(panel.Text == "取字连续圈注 v9.8.7", "空版本号保持原标题");
         }
+        Expect(ClickCircle.Plugin.VersionText.Split('.').Length == 3,
+            "插件版本文本为三段点分十进制，实际 " + ClickCircle.Plugin.VersionText);
     }
 
     private static void CheckApplySettings()

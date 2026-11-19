@@ -1,8 +1,19 @@
-# 取字连续圈注 验收记录（1.6.4）
+# 取字连续圈注 验收记录（1.6.5）
+
+日期：2026-11-19。宿主：便携版 PDF-XChange Editor 10.8.4.409 x64（`F:\桌面1\PDFEditor`）。
+
+## 本轮（1.6.5）：面板标题显示版本号
+
+- 面板标题改为“取字连续圈注 v1.6.5”：版本取自 `Plugin.version` 的同一常量 `PluginVersionNumber`，由新增的 `Plugin.VersionText` 生成点分十进制文本，`EnsurePanel` 创建面板后调用 `StampPanel.SetVersion`；传空值保持原标题。
+- 启动日志新增 `Version 1.6.5`，排在 `Init OK` 之前，用于确认实际加载的版本；面板标题与日志共用同一常量，不会各写一份。
+- 构建与测试：`PanelSizeTests` 增补 4 项（默认标题不带版本号、`SetVersion` 后标题为“取字连续圈注 v9.8.7”、空版本号保持原标题、`VersionText` 为三段点分十进制）；12 个测试程序共 811 项通过（原 807 + 4）。`version` 改为 1.6.5，`package.ps1` 默认版本改为 1.6.5。
+- 本机没有 `build.ps1` 需要的 `PXCEditorCore.x64.dll`，按相同参数用 csc/ilasm 引用 `dist\PDFXEdit.dll` 编译（`/codepage:65001`，资源 `ocr-helper.ps1`）。
+- 装机：2026-11-19 09:28，旧 1.6.4 三文件、清单、设置与日志备份到 `output\install-backup-1.6.4-20261119-092741`；`Plugins.x64` 三者 SHA-256 与 `dist` 一致：Core `E0E2EC9743A90BF4675846826688B86A88158A1FBA67CEF6BC4E11F5123DE87A`、pvp `B055D492FF88F462FA931937F185F3067FD203726671412236B926629B24A8CF`、PDFXEdit.dll `2C8C6BA1F29654898AFBA5F7C566F9853E4411E6E05F4B963C93AC2751E208C1`。重开编辑器日志 `09:28:25.062 Hotkey Q via hook`、`09:28:25.073 Version 1.6.5`、`09:28:25.073 Init OK`；快捷键 `Q`、14 × 15 mm 与主题历史保留。
+- 未覆盖：150% 缩放下标题栏是否截断需人工确认（最小客户区宽度 440，标题约 16 个字符）。
+
+## 早前（1.6.4）：面板排版收敛
 
 日期：2026-11-19。宿主：便携版 PDF-XChange Editor 11.0.1 x64（`D:\PDF-XChangeEditorPlusPortable\App\PDF-XChange\PDF Editor`）。
-
-## 本轮（1.6.4）：面板排版收敛
 
 - 行高改为按字体与控件首选高度计算（`Font.Height`、`PreferredSize`）：主题行 = 输入框首选高 + 16，分隔符/尺寸行同法，按钮行 = 按钮首选高 + 14，状态行 = 字体高 + 14。固定 44/48 的行高在 150% 缩放下会把字挤满、在 100% 下又留大片空白，这一条同时修两头。
 - 标签列统一：主题、分隔符、宽高、快捷键、主题历史五行的第 0 列都改成同一宽度（`TextRenderer` 实测“分隔符 / 主题历史 / 宽 mm”里最宽者 + 12），四行输入框左边缘对齐；“分隔符”“主题历史”不再折行。

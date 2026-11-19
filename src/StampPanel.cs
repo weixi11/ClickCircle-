@@ -352,6 +352,14 @@ namespace ClickCircle
             SetMode("paused", "待取字");
         }
 
+        /// <summary>在标题栏显示版本号；传空值保持原标题。</summary>
+        public void SetVersion(string version)
+        {
+            if (String.IsNullOrWhiteSpace(version))
+                return;
+            Text = "取字连续圈注 v" + version.Trim();
+        }
+
         public string Subject
         {
             get { return subjectBox.Text; }
