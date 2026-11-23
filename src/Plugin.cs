@@ -122,8 +122,17 @@ namespace ClickCircle
             {
                 EnsurePanel();
                 hotkey = new HotkeyService(
-                    delegate { return !unloading && mode != StampMode.Reviewing &&
-                        HotkeyScope.CanTrigger(Instance, Panel); },
+                    delegate
+                    {
+                        if (unloading || mode == StampMode.Reviewing)
+                            return false;
+                        string reason;
+                        bool allowed = HotkeyScope.CanTrigger(Instance, Panel, IsToolContextActive,
+                            out reason);
+                        if (!allowed && reason != null)
+                            Log("Hotkey ignored: " + reason);
+                        return allowed;
+                    },
                     delegate { return !unloading && HotkeyScope.CanCapture(Panel); });
                 hotkey.Triggered += Pick;
                 hotkey.Captured += OnHotkeyCaptured;
@@ -141,6 +150,26 @@ namespace ClickCircle
             {
                 Log("Init FAILED " + exception);
                 throw;
+            }
+        }
+
+        /// <summary>插件的页面工具是否正是当前文档的活动工具（取字、区域识别、圈注都算）。</summary>
+        private bool IsToolContextActive
+        {
+            get
+            {
+                try
+                {
+                    if (tool == null || Instance == null)
+                        return false;
+                    IPXV_Document document = ActiveDocument();
+                    return document != null && document.ActiveTool != null &&
+                        document.ActiveTool.ID == tool.ID;
+                }
+                catch (Exception)
+                {
+                    return false;
+                }
             }
         }
 
@@ -195,7 +224,7 @@ namespace ClickCircle
         public string Name { get { return "取字连续圈注"; } }
         public string CopyrightInfo { get { return "ClickCircle 2026"; } }
         /// <summary>插件版本号，面板标题显示同一数值。</summary>
-        private const uint PluginVersionNumber = (1U << 16) | (7U << 8) | 6U;
+        private const uint PluginVersionNumber = (1U << 16) | (7U << 8) | 7U;
 
         public uint version { get { return PluginVersionNumber; } }
 
@@ -336,7 +365,11 @@ namespace ClickCircle
             catch (Exception exception) { Log("Timer " + exception.Message); }
         }
 
-        public void Pick() { Activate(StampMode.Picking); }
+        public void Pick()
+        {
+            Log("Hotkey fired (mode=" + mode + ")");
+            Activate(StampMode.Picking);
+        }
         public void PickOcr() { Activate(StampMode.OcrPicking); }
         public void Resume()
         {
@@ -566,6 +599,9 @@ namespace ClickCircle
                 finally { changingTool = false; }
                 if (document.ActiveView != null && document.ActiveView.PagesView != null)
                     document.ActiveView.PagesView.Obj.SetInputFocus(false);
+                // 重新取字给个即时反馈：否则只清了主题，用户会以为快捷键没响应。
+                if (restartingPick)
+                    Panel.ShowPickHint("重新取字，点击文字继续", 0);
                 Log(next + " doc=" + boundDocument);
                 if (restartingPick)
                     Log("Picking restarted doc=" + boundDocument);
