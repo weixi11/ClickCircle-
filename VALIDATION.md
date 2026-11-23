@@ -1,8 +1,19 @@
-# 取字连续圈注 验收记录（1.7.7）
+# 取字连续圈注 验收记录（1.8.0）
 
 日期：2026-11-23。宿主：便携版 PDF-XChange Editor 10.8.4.409 x64（`F:\桌面1\PDFEditor`）。
 
-## 本轮（1.7.7）：修复取字途中按快捷键“没反应”
+## 本轮（1.8.0）：标注字段、类型与样式扩展
+
+- 需求：不只套主题，还要作者、标签/正文；不只椭圆，还要周长、面积等测量标注；颜色与其它参数可配。
+- 方案（已与用户确认）：仍用编辑器原生工具绘制（周长/面积多点绘制保持原生交互），插件监听 `e.annots.inserted`，对新增标注自动写入样式。
+- 新增文件：`src\AnnotStyle.cs`（样式模型，同时作为 settings.xml 序列化载体）、`src\AnnotStyler.cs`（把样式写进 `IPXC_AnnotData`：主题/作者/标签、SColor/FColor、边框宽度与虚线、不透明度、测量比例尺与数字格式）、`src\AnnotWatcher.cs`（按文档订阅 `e.annots.inserted`，定时同步新开/关闭的文档）、`src\AnnotStyleDialog.cs`（样式编辑对话框）。
+- 面板：设置页“快捷键”下方新增“标注样式”一行，显示当前状态（如“测量标注 · 周长”）并打开对话框；样式随 settings.xml 保存，升级不丢。
+- 测量参数：`IPXC_MeasureRL` 设置 `Ratio`（“1 mm = 0.5 m”），并用 `IPXC_NumberFormatArray`/`IPXC_NumberFormatItem` 设置距离与面积系数、单位、小数位、千位分隔。
+- 兼容：样式默认关闭（`Enabled=false`），不启用时监听器直接返回，行为与 1.7.7 完全一致；旧版 settings.xml 缺少 `<Style>` 时自动补默认值。
+- 构建与测试：14 个测试程序共 881 项通过，其中 `AnnotStyleTests` 39 项覆盖默认值、数值夹取、颜色换算（含 A=255 修正）、比例尺换算、克隆隔离、settings.xml 往返与旧配置补默认。
+- 待真机确认：`e.annots.inserted` 事件订阅是否被宿主接受、自动套用后的外观刷新、测量比例尺在周长/面积上的显示效果（日志会写 `Style watcher subscribed doc=` 与 `Style applied count=`）。
+
+## 早前（1.7.7）：修复取字途中按快捷键“没反应”
 
 - 现象：取字过程中按 `Q` 没有反应（日志里有时出现 `Picking restarted`、有时完全没有记录），用户必须先点一下页面再按才生效。
 - 根因（已用日志证实）：`HotkeyScope.CanTrigger` 要求页面视图当前持有输入焦点（`pageObject.HasInputFocus` 且焦点窗口正是页面画布）。取字过程中出现过的焦点变化（点面板、弹取字提示窗、重新取字时再次 `SetInputFocus`）会让该条件不成立，热键被静默丢弃，没有任何提示。复现日志：连续三次按 Q 只记录 `Hotkey ignored: 页面视图没有输入焦点`。

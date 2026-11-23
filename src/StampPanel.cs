@@ -46,6 +46,8 @@ namespace ClickCircle
         private Label statusDot;
         private Label versionLabel;
         private Label settingsHint;
+        private Label styleStatusLabel;
+        private Button styleEditorButton;
         private Label updateStatusLabel;
         private PickHintForm pickHint;
         private string versionText = String.Empty;
@@ -69,6 +71,7 @@ namespace ClickCircle
         public event Action HistoryChanged;
         public event Action OcrLanguageChanged;
         public event Action CheckUpdateRequested;
+        public event Action StyleEditRequested;
 
         /// <summary>用户拖动窗口边缘改尺寸后触发，用于记住面板大小。</summary>
         public event Action PanelSizeChanged;
@@ -315,7 +318,7 @@ namespace ClickCircle
             Controls.Add(settingsPage);
 
             TableLayoutPanel layout = new TableLayoutPanel {
-                Dock = DockStyle.Fill, ColumnCount = 1, RowCount = 11, Margin = Padding.Empty,
+                Dock = DockStyle.Fill, ColumnCount = 1, RowCount = 12, Margin = Padding.Empty,
                 BackColor = PageBack
             };
             layout.RowStyles.Add(new RowStyle(SizeType.Absolute, 32F));
@@ -325,6 +328,7 @@ namespace ClickCircle
             layout.RowStyles.Add(new RowStyle(SizeType.Absolute, 14F));
             layout.RowStyles.Add(new RowStyle(SizeType.Absolute, 28F));
             layout.RowStyles.Add(new RowStyle(SizeType.Absolute, 48F));
+            layout.RowStyles.Add(new RowStyle(SizeType.Absolute, 44F));
             layout.RowStyles.Add(new RowStyle(SizeType.Percent, 100F));
             layout.RowStyles.Add(new RowStyle(SizeType.Absolute, 14F));
             layout.RowStyles.Add(new RowStyle(SizeType.Absolute, 48F));
@@ -446,6 +450,27 @@ namespace ClickCircle
             hotkeyRow.Controls.Add(clearHotkeyButton, 2, 0);
             layout.Controls.Add(hotkeyRow, 0, 6);
 
+            TableLayoutPanel styleRow = new TableLayoutPanel {
+                Dock = DockStyle.Fill, ColumnCount = 3, RowCount = 1, Margin = Padding.Empty,
+                BackColor = PageBack
+            };
+            styleRow.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, 72F));
+            styleRow.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100F));
+            styleRow.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, 116F));
+            styleEditorButton = MakeSecondaryButton("编辑样式…", 10);
+            styleEditorButton.Margin = new Padding(0, 4, 8, 8);
+            styleEditorButton.Click += delegate { Raise(StyleEditRequested); };
+            styleStatusLabel = new Label {
+                Text = "未启用", Dock = DockStyle.Fill, TextAlign = ContentAlignment.MiddleLeft,
+                ForeColor = Muted, Font = new Font(Font.FontFamily, 9F), AutoEllipsis = true
+            };
+            Label styleLabel = MakeLabel("标注样式", "新标注自动样式");
+            styleLabel.ForeColor = TextColor;
+            styleRow.Controls.Add(styleLabel, 0, 0);
+            styleRow.Controls.Add(styleStatusLabel, 1, 0);
+            styleRow.Controls.Add(styleEditorButton, 2, 0);
+            layout.Controls.Add(styleRow, 0, 7);
+
             TableLayoutPanel infoPanel = new TableLayoutPanel {
                 Dock = DockStyle.Fill, ColumnCount = 1, RowCount = 3, Margin = Padding.Empty,
                 BackColor = PageBack
@@ -454,7 +479,7 @@ namespace ClickCircle
             infoPanel.RowStyles.Add(new RowStyle(SizeType.AutoSize));
             infoPanel.RowStyles.Add(new RowStyle(SizeType.Percent, 100F));
             settingsHint = new Label {
-                Text = "取字与主题历史在主页操作；这里的分隔符、圈注尺寸和快捷键修改后立即生效。",
+                Text = "取字与主题历史在主页操作；分隔符、圈注尺寸、快捷键与标注样式修改后立即生效。",
                 AutoSize = true, ForeColor = Muted, Font = new Font(Font.FontFamily, 8.5F),
                 Margin = new Padding(0, 8, 0, 0), MaximumSize = new Size(400, 0)
             };
@@ -465,7 +490,7 @@ namespace ClickCircle
             };
             infoPanel.Controls.Add(settingsHint, 0, 0);
             infoPanel.Controls.Add(updateStatusLabel, 0, 1);
-            layout.Controls.Add(infoPanel, 0, 7);
+            layout.Controls.Add(infoPanel, 0, 8);
 
             TableLayoutPanel versionRow = new TableLayoutPanel {
                 Dock = DockStyle.Fill, ColumnCount = 2, RowCount = 1, Margin = Padding.Empty,
@@ -484,15 +509,15 @@ namespace ClickCircle
             versionRow.Controls.Add(updateButton, 1, 0);
             layout.Controls.Add(new Panel {
                 Dock = DockStyle.Fill, BackColor = BorderColor, Margin = new Padding(0, 7, 0, 7)
-            }, 0, 8);
-            layout.Controls.Add(versionRow, 0, 9);
+            }, 0, 9);
+            layout.Controls.Add(versionRow, 0, 10);
 
             Label footer = new Label {
                 Text = "设置页仅调整标注参数", Dock = DockStyle.Fill,
                 TextAlign = ContentAlignment.MiddleLeft, ForeColor = Muted,
                 Font = new Font(Font.FontFamily, 8.5F)
             };
-            layout.Controls.Add(footer, 0, 10);
+            layout.Controls.Add(footer, 0, 11);
         }
 
         private void ShowSettings(bool show)
@@ -884,6 +909,9 @@ namespace ClickCircle
                 heightInput.Value = PluginSettings.ClampDimension(settings.HeightMm, 1.2);
                 Separator = settings.Separator;
                 OcrLanguage = settings.OcrLanguage;
+                AnnotStyle style = (settings.Style ?? AnnotStyle.Default()).Clone();
+                style.Normalize();
+                Style = style;
                 history = new SubjectHistory(settings.SubjectHistory);
                 RefreshHistory();
                 ClientSize = new Size(
@@ -897,6 +925,7 @@ namespace ClickCircle
             hotkey = HotkeyBinding.ParseOrDefault(settings.PickHotkey);
             UpdateHotkeyButton();
             UpdateSummary();
+            UpdateStyleStatus();
             if (separatorInput != null)
                 separatorInput.SelectionLength = 0;
         }
@@ -909,10 +938,31 @@ namespace ClickCircle
                 PickHotkey = hotkey.ToStorage(),
                 Separator = Separator,
                 OcrLanguage = OcrLanguage,
+                Style = (Style ?? AnnotStyle.Default()).Clone(),
                 SubjectHistory = history.Export(),
                 PanelWidth = ClientSize.Width,
                 PanelHeight = ClientSize.Height
             };
+        }
+
+        /// <summary>新标注自动套用的样式；由插件在“编辑标注样式”确定后写回。</summary>
+        public AnnotStyle Style { get; set; }
+
+        /// <summary>设置页“标注样式”一行的状态文字。</summary>
+        public void UpdateStyleStatus()
+        {
+            if (styleStatusLabel == null)
+                return;
+            AnnotStyle style = Style;
+            if (style == null || !style.Enabled)
+            {
+                styleStatusLabel.Text = "未启用";
+                styleStatusLabel.ForeColor = Muted;
+                return;
+            }
+            string subject = String.IsNullOrEmpty(style.Subject) ? "不改主题" : style.Subject;
+            styleStatusLabel.Text = (style.MeasureOnly ? "测量标注 · " : "所有新标注 · ") + subject;
+            styleStatusLabel.ForeColor = Color.FromArgb(34, 181, 115);
         }
 
         // Modes: "picking", "stamping", and "paused"; aliases keep the host simple.
@@ -1176,6 +1226,7 @@ namespace ClickCircle
             SubjectHistory = new List<SubjectHistoryEntry>();
             PanelWidth = StampPanel.DefaultPanelWidth;
             PanelHeight = StampPanel.DefaultPanelHeight;
+            Style = new AnnotStyle();
         }
 
         public double WidthMm { get; set; }
@@ -1186,6 +1237,9 @@ namespace ClickCircle
         public string Separator { get; set; }
         public string OcrLanguage { get; set; }
         public List<SubjectHistoryEntry> SubjectHistory { get; set; }
+
+        /// <summary>新标注自动套用的样式（字段/颜色/边框/测量参数）。</summary>
+        public AnnotStyle Style { get; set; }
 
         /// <summary>面板客户区宽度；重启后按它恢复窗口大小。</summary>
         public int PanelWidth { get; set; }
@@ -1215,6 +1269,7 @@ namespace ClickCircle
                     if (settings.Separator == null)
                         settings.Separator = "/";
                     settings.OcrLanguage = OcrService.NormalizeLanguagePreference(settings.OcrLanguage);
+                    settings.Style = NormalizeStyle(settings.Style);
                     settings.SubjectHistory = new SubjectHistory(settings.SubjectHistory).Export();
                     settings.PanelWidth = ClampPanelWidth(settings.PanelWidth, StampPanel.DefaultPanelWidth);
                     settings.PanelHeight = ClampPanelHeight(settings.PanelHeight, StampPanel.DefaultPanelHeight);
@@ -1240,6 +1295,7 @@ namespace ClickCircle
                     PickHotkey = HotkeyBinding.ParseOrDefault(PickHotkey).ToStorage(),
                     Separator = Separator ?? "/",
                     OcrLanguage = OcrService.NormalizeLanguagePreference(OcrLanguage),
+                    Style = NormalizeStyle(Style),
                     SubjectHistory = new SubjectHistory(SubjectHistory).Export(),
                     PanelWidth = ClampPanelWidth(PanelWidth, StampPanel.DefaultPanelWidth),
                     PanelHeight = ClampPanelHeight(PanelHeight, StampPanel.DefaultPanelHeight)
@@ -1268,8 +1324,15 @@ namespace ClickCircle
             }
         }
 
-        internal static decimal ClampDimension(double value, double fallback)
+        /// <summary>反序列化得到的样式可能为 null 或数值越界，统一夹回范围。</summary>
+        public static AnnotStyle NormalizeStyle(AnnotStyle style)
         {
+            AnnotStyle normalized = (style ?? AnnotStyle.Default()).Clone();
+            normalized.Normalize();
+            return normalized;
+        }
+
+        internal static decimal ClampDimension(double value, double fallback)        {
             if (Double.IsNaN(value) || Double.IsInfinity(value))
                 value = fallback;
             return Decimal.Round((decimal)Math.Min(100, Math.Max(0.1, value)), 2);

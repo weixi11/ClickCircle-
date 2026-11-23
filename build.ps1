@@ -52,7 +52,11 @@ $pluginPath = Join-Path $stagePath 'ClickCircle.Core.dll'
     (Join-Path $PSScriptRoot 'src\UpdateService.cs') `
     (Join-Path $PSScriptRoot 'src\HotkeyBinding.cs') `
     (Join-Path $PSScriptRoot 'src\HotkeyScope.cs') `
-    (Join-Path $PSScriptRoot 'src\HotkeyService.cs')
+    (Join-Path $PSScriptRoot 'src\HotkeyService.cs') `
+    (Join-Path $PSScriptRoot 'src\AnnotStyle.cs') `
+    (Join-Path $PSScriptRoot 'src\AnnotStyler.cs') `
+    (Join-Path $PSScriptRoot 'src\AnnotWatcher.cs') `
+    (Join-Path $PSScriptRoot 'src\AnnotStyleDialog.cs')
 if ($LASTEXITCODE -ne 0) { throw 'Failed to compile the plugin.' }
 
 & $assemblerPath /nologo /dll /x64 "/output:$(Join-Path $stagePath 'ClickCircle.pvp')" `
@@ -97,7 +101,7 @@ if ($RunTests) {
     & $serviceTestPath
     if ($LASTEXITCODE -ne 0) { throw 'Hotkey routing tests failed.' }
 
-    foreach ($testName in @('RegionPickerTests', 'SeparatorPanelTests', 'ShxTextTests', 'OcrTests', 'HistoryPreferenceTests', 'CursorTests', 'RightClickTests', 'PanelSizeTests', 'UpdateTests')) {
+    foreach ($testName in @('RegionPickerTests', 'SeparatorPanelTests', 'ShxTextTests', 'OcrTests', 'HistoryPreferenceTests', 'CursorTests', 'RightClickTests', 'PanelSizeTests', 'UpdateTests', 'AnnotStyleTests')) {
         $selectionTestPath = Join-Path $stagePath ($testName + '.exe')
         & $compilerPath /nologo /target:exe /platform:x64 /optimize+ `
             "/out:$selectionTestPath" "/reference:$pluginPath" "/reference:$interopPath" `

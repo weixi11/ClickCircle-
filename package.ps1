@@ -1,6 +1,6 @@
 [CmdletBinding()]
 param(
-    [string] $Version = '1.7.7',
+    [string] $Version = '1.8.0',
     [string] $OutputDirectory = (Join-Path $PSScriptRoot 'release'),
     [switch] $IncludeDrawingDemo
 )
@@ -38,6 +38,10 @@ $requiredFiles = @(
     'src\HotkeyBinding.cs',
     'src\HotkeyScope.cs',
     'src\HotkeyService.cs',
+    'src\AnnotStyle.cs',
+    'src\AnnotStyler.cs',
+    'src\AnnotWatcher.cs',
+    'src\AnnotStyleDialog.cs',
     'tools\ExtractInterop.cs',
     'tools\ClickCircle.Bootstrap.il',
     'tools\PanelPreview.cs',
@@ -70,6 +74,7 @@ $requiredFiles = @(
     'tests\HotkeyBindingTests.cs',
     'tests\HotkeyPanelTests.cs',
     'tests\HotkeyServiceTests.cs',
+    'tests\AnnotStyleTests.cs',
     'tests\verify_output.py',
     'tests\create_fixture.py',
     'tests\create_box_fixture.py',

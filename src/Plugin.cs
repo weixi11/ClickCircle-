@@ -20,6 +20,7 @@ namespace ClickCircle
         private CircleTool tool;
         private IUIX_Cmd command;
         private HotkeyService hotkey;
+        private AnnotWatcher watcher;
         private System.Windows.Forms.Timer timer;
         private uint boundDocument;
         private uint observedDocument;
@@ -121,6 +122,7 @@ namespace ClickCircle
             try
             {
                 EnsurePanel();
+                watcher = new AnnotWatcher(this);
                 hotkey = new HotkeyService(
                     delegate
                     {
@@ -177,6 +179,7 @@ namespace ClickCircle
         {
             unloading = true;
             if (timer != null) { timer.Stop(); timer.Dispose(); timer = null; }
+            if (watcher != null) { watcher.Dispose(); watcher = null; }
             if (hotkey != null)
             {
                 hotkey.Triggered -= Pick;
@@ -224,7 +227,7 @@ namespace ClickCircle
         public string Name { get { return "取字连续圈注"; } }
         public string CopyrightInfo { get { return "ClickCircle 2026"; } }
         /// <summary>插件版本号，面板标题显示同一数值。</summary>
-        private const uint PluginVersionNumber = (1U << 16) | (7U << 8) | 7U;
+        private const uint PluginVersionNumber = (1U << 16) | (8U << 8) | 0U;
 
         public uint version { get { return PluginVersionNumber; } }
 
@@ -263,6 +266,44 @@ namespace ClickCircle
             Panel.HotkeyCaptureStarted += OnHotkeyCaptureStarted;
             Panel.HotkeyCaptureStopped += OnHotkeyCaptureStopped;
             Panel.CheckUpdateRequested += CheckForUpdates;
+            Panel.StyleEditRequested += OnStyleEditRequested;
+        }
+
+        /// <summary>当前“新标注自动套用”的样式；未启用时返回 null 以便监听器直接跳过。</summary>
+        internal AnnotStyle CurrentStyle
+        {
+            get
+            {
+                if (Panel == null || Panel.IsDisposed)
+                    return null;
+                AnnotStyle style = Panel.Style;
+                return style != null && style.Enabled ? style : null;
+            }
+        }
+
+        private void OnStyleEditRequested()
+        {
+            try
+            {
+                AnnotStyle current = Panel == null ? null : Panel.Style;
+                using (AnnotStyleDialog dialog = new AnnotStyleDialog(current))
+                {
+                    if (dialog.ShowDialog(Panel) != DialogResult.OK || dialog.Style == null)
+                    {
+                        Log("Annot style dialog cancelled");
+                        return;
+                    }
+                    Panel.Style = dialog.Style;
+                    Panel.UpdateStyleStatus();
+                    SaveSettings();
+                    Log("Annot style updated enabled=" + dialog.Style.Enabled +
+                        " measureOnly=" + dialog.Style.MeasureOnly);
+                }
+            }
+            catch (Exception exception)
+            {
+                Log("Annot style dialog FAILED " + exception);
+            }
         }
 
         private void OnHotkeyCaptureStarted()
@@ -353,6 +394,7 @@ namespace ClickCircle
                     installedFrames.Add(handle);
                 }
                 IPXV_Document document = ActiveDocument();
+                if (watcher != null) watcher.Sync();
                 if (tool != null) tool.CheckGestureView();
                 uint current = document == null ? 0 : document.ID;
                 if (current != observedDocument)
