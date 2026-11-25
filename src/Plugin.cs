@@ -28,6 +28,7 @@ namespace ClickCircle
         private bool unloading;
         private int ocrGeneration;
         private bool updateCheckRunning;
+        private DateTime toolRestoreAtUtc = DateTime.MinValue;
         private OcrReviewDialog ocrReview;
         private readonly Dictionary<uint, int> previousTools = new Dictionary<uint, int>();
         private readonly HashSet<ulong> installedFrames = new HashSet<ulong>();
@@ -178,6 +179,7 @@ namespace ClickCircle
         public void Unload()
         {
             unloading = true;
+            toolRestoreAtUtc = DateTime.MinValue;
             if (timer != null) { timer.Stop(); timer.Dispose(); timer = null; }
             if (watcher != null) { watcher.Dispose(); watcher = null; }
             if (hotkey != null)
@@ -227,7 +229,7 @@ namespace ClickCircle
         public string Name { get { return "取字连续圈注"; } }
         public string CopyrightInfo { get { return "ClickCircle 2026"; } }
         /// <summary>插件版本号，面板标题显示同一数值。</summary>
-        private const uint PluginVersionNumber = (1U << 16) | (8U << 8) | 0U;
+        private const uint PluginVersionNumber = (1U << 16) | (8U << 8) | 3U;
 
         public uint version { get { return PluginVersionNumber; } }
 
@@ -382,6 +384,12 @@ namespace ClickCircle
             if (unloading || Instance == null) return;
             try
             {
+                // 右键完成标注后会推迟 300ms 交回工具，这里到点执行；期间页面工具负责吞掉右键菜单消息。
+                if (ContextMenuGuard.ShouldRestore(DateTime.UtcNow, toolRestoreAtUtc))
+                {
+                    toolRestoreAtUtc = DateTime.MinValue;
+                    RestoreTools();
+                }
                 for (uint index = 0; index < Instance.MainFrmCount; index++)
                 {
                     IPXV_MainFrame frame = Instance.get_MainFrm(index);
@@ -427,7 +435,7 @@ namespace ClickCircle
             {
                 int count = Panel == null || Panel.IsDisposed ? 0 : Panel.PickedFragmentCount;
                 return count == 0
-                    ? "点击文字可多次取，右键完成取字"
+                    ? "点击文字取字，右键完成"
                     : "已取 " + count + " 段，右键完成取字";
             }
         }
@@ -448,14 +456,15 @@ namespace ClickCircle
         }
 
         /// <summary>
-        /// 右键完成标注：结束本次连续圈注，工具与光标交回编辑器，主题保留以便“继续标注”。
-        /// 已画好的椭圆不受影响，也不再吞掉后续的右键菜单。
+        /// 右键完成标注：结束本次连续圈注，主题保留以便“继续标注”。
+        /// 已画好的椭圆不受影响。工具稍后再交回编辑器：这次右键的抬起与菜单请求
+        /// 还要由页面工具吃掉，交回太早编辑器会弹出页面右键菜单（见 ContextMenuGuard）。
         /// </summary>
         public void FinishStamping()
         {
             if (mode != StampMode.Stamping) return;
             string subject = Panel == null || Panel.IsDisposed ? String.Empty : Panel.Subject;
-            PauseWithStatus("已完成标注，主题保留可继续标注");
+            PauseWithStatus("已完成标注，可继续标注", true);
             Log("Stamping finished subject=" + subject);
         }
 
@@ -617,6 +626,7 @@ namespace ClickCircle
             {
                 EnsurePanel();
                 CancelOcr();
+                toolRestoreAtUtc = DateTime.MinValue;
                 if (tool != null) tool.CancelGesture();
                 IPXV_Document document = ActiveDocument();
                 if (document == null)
@@ -659,10 +669,29 @@ namespace ClickCircle
 
         private void PauseWithStatus(string status)
         {
+            PauseWithStatus(status, false);
+        }
+
+        /// <summary>暂停并交出工具；deferToolRestore 为真时稍后再交回，先让页面工具吃掉右键菜单消息。</summary>
+        private void PauseWithStatus(string status, bool deferToolRestore)
+        {
             CancelOcr();
             if (tool != null) tool.CancelGesture();
             SetMode(StampMode.Paused, status);
             if (changingTool || Instance == null || tool == null) return;
+            if (deferToolRestore)
+            {
+                toolRestoreAtUtc = ContextMenuGuard.RestoreFrom(DateTime.UtcNow);
+                return;
+            }
+            toolRestoreAtUtc = DateTime.MinValue;
+            RestoreTools();
+        }
+
+        /// <summary>把当前文档（以及原绑定文档）的工具交回编辑器。</summary>
+        private void RestoreTools()
+        {
+            if (Instance == null || tool == null || changingTool) return;
             changingTool = true;
             try
             {
@@ -751,7 +780,7 @@ namespace ClickCircle
                     if (!TextPicker.TryGetWord(page, point, out text))
                     {
                         Panel.SetMode("picking", Panel.PickedFragmentCount == 0
-                            ? "未点中文字，可拖框进行区域识别" : PickingHint);
+                            ? "未点中文字，可拖框识别" : PickingHint);
                         return;
                     }
                     Panel.AppendPickedFragments(new[] { text });

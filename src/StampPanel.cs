@@ -201,7 +201,8 @@ namespace ClickCircle
             };
             statusLabel = new Label {
                 Dock = DockStyle.Fill, TextAlign = ContentAlignment.MiddleLeft,
-                ForeColor = TextColor, AutoEllipsis = true, AccessibleName = "圈注状态"
+                ForeColor = TextColor, AutoEllipsis = true, AutoSize = false,
+                AccessibleName = "圈注状态"
             };
             Label hotkeyLabel = MakeLabel("快捷键", "取文字快捷键");
             hotkeyLabel.ForeColor = Muted;
@@ -634,7 +635,7 @@ namespace ClickCircle
             updateStatusLabel.ForeColor = error ? Color.FromArgb(208, 69, 63) : TextColor;
         }
 
-        /// <summary>取字成功时在鼠标旁显示短暂提示，例如“已取 2 段 · LI-282”。</summary>
+        /// <summary>取字成功时在屏幕右下角显示短暂提示，例如“已取 2 段 · LI-282”。</summary>
         public void ShowPickHint(string fragment, int count)
         {
             string body = (fragment ?? String.Empty).Trim();

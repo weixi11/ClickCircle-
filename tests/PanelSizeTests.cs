@@ -145,6 +145,25 @@ internal static class PanelSizeTests
         }
     }
 
+    private static void CheckPickHintPlacement()
+    {
+        Size hint = new Size(130, 24);
+        Point placed = PickHintPlacement.BottomRight(new Rectangle(0, 0, 1920, 1040), hint);
+        Expect(placed.X == 1920 - 130 - PickHintPlacement.Margin,
+            "取字提示贴屏幕右下角，实际 " + placed);
+        Expect(placed.Y == 1040 - 24 - PickHintPlacement.Margin,
+            "取字提示贴屏幕底边，实际 " + placed);
+
+        Point offset = PickHintPlacement.BottomRight(new Rectangle(100, 50, 800, 600), hint);
+        Expect(offset.X == 100 + 800 - 130 - PickHintPlacement.Margin &&
+            offset.Y == 50 + 600 - 24 - PickHintPlacement.Margin,
+            "副屏工作区按自身坐标落点，实际 " + offset);
+
+        Point clamped = PickHintPlacement.BottomRight(new Rectangle(0, 0, 60, 30), hint);
+        Expect(clamped.X == 0 && clamped.Y == 0,
+            "工作区比提示还小时夹到左上角，实际 " + clamped);
+    }
+
     private static void Collect<T>(Control root, ref T[] slots, ref int count) where T : Control
     {
         foreach (Control child in root.Controls)
@@ -165,6 +184,7 @@ internal static class PanelSizeTests
             CheckApplySettings();
             CheckSettingsRoundTrip();
             CheckLayout();
+            CheckPickHintPlacement();
             Console.WriteLine("PanelSize: " + checkedCases + " cases passed.");
             return 0;
         }

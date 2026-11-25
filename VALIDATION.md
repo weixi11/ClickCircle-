@@ -1,8 +1,57 @@
-# 取字连续圈注 验收记录（1.8.0）
+# 取字连续圈注 验收记录（1.8.3）
 
-日期：2026-11-23。宿主：便携版 PDF-XChange Editor 10.8.4.409 x64（`F:\桌面1\PDFEditor`）。
+日期：2026-11-25。宿主：便携版 PDF-XChange Editor 10.8.4.409 x64（`F:\桌面1\PDFEditor`）。
 
-## 本轮（1.8.0）：标注字段、类型与样式扩展
+## 本轮（1.8.3）：点击位置在测量标注/批注标签上也能取字
+
+- 现象（用户反馈，附截图）：图纸第 5 页上点击绿色尺寸标签（`300X200 EAD`、`400X200 EAD` 等）取不了字；面板处于取字状态，点了没有结果，也没提示取到什么。
+- 根因：这些标签不是页面文字层，而是 **PDF-XChange 测量标注（PolyLineDimension）的标签**：标签行和测量值存在标注 `/Contents` 里（例如 `EAD\300X200\` + 换行 + `50.89 m `），由编辑器按标注样式渲染成屏幕上的 “300X200 EAD”。插件原来只读 `IPXC_Page.GetText`（页面文字层）和 SHX 批注，点在标注标签上自然取不到；实测把 `GetText` 换成 `GPTOF_IncludeComments | GPTOF_IncludeFormFields` 也不会把标注内容放进页面文字层（标注矩形内文字字符数仍是 0）。
+- 修复：
+  - 新增 `src\AnnotationLabel.cs`：把 `/Contents` 还原成可见标签——去掉末尾测量值行（`50.89 m` 这类），按反斜杠分行、去掉空段后**反序**用空格连接（`EAD\300X200\` → `300X200 EAD`；`EAL/3000x550/1/` 原样保留）；没有反斜杠的普通批注按原顺序取文字。
+  - `TextPicker.TryGetWord` 变成三级回退：**页面文字层 → SHX 原文 → 标注标签**。标注标签只认点击位置附近（到标注折线的距离 < 8 pt，统一取最近的一条，同样近取上层）且可见（跳过 Invisible/Hidden/NoView）的标注；插件自己画的椭圆 Contents 为空，不受影响。这样点到标注外框大片空白不会乱取字。
+- 构建与测试：15 个测试程序共 927 项通过。`TextPickerTests` 15 → 34 项，新增 19 项覆盖标签还原（`EAD\300X200\`→`300X200 EAD`、三行 `EAG\500X500\1\`→`1 500X500 EAG`、斜杠标签原样、普通批注按原序、只有测量值/空内容返回 null）与测量值行识别（`50.89 m`、`0.6 m²`、`1,234.5` 是；`300X200`、`300 x 200`、`EAD` 不是）。其余：HotkeyBinding 92、HotkeyPanel 35、HotkeyService 145、RegionPicker 71、SeparatorPanel 111、ShxText 91、OCR 142、HistoryPreference 64、Cursor 8、RightClick 21、LeftRelease 10、PanelSize 33、Update 31、AnnotStyle 39。
+- 构建方式：同前，用系统 `csc.exe` / `ilasm.exe`、以 `dist\PDFXEdit.dll` 为互操作引用编译；`ClickCircle.Core.dll` 139776 字节、`ClickCircle.pvp` 3072 字节。`build.ps1` 的编译清单与 `package.ps1` 白名单加入 `src\AnnotationLabel.cs`，`dist` 三者 SHA-256：Core `3D3A428A8CA57D0D6B3DF8A567AF721ADE8DC1DDFE8D9F818245D20D3A365FBB`、pvp `D5074B8E1D19C2028580C8E678BB3AD6F23E197C8F595F9ED816E0F112E535AB`、PDFXEdit.dll `2C8C6BA1F29654898AFBA5F7C566F9853E4411E6E05F4B963C93AC2751E208C1`。
+- 真机验证（2026-11-25 17:47–17:52，独立编辑器副本 `F:\桌面1\PDFEditor - 副本`）：写了一个一次性验收插件，直接在真实编辑器里打开用户那张 `0535A-AC-风管.pdf` 第 5 页，沿标注折线每 2 pt 取样调用**正式** `TextPicker.TryGetWord`（不弹 UI、不动鼠标）：
+  - 改前（1.8.2 Core 138240 字节）：annot0/12/14/26/42 全部取不到（`<none>`）；页面原生文字点仍取到 `1`（原生路径基线）；空白处、标注外框角落均 `<none>`。
+  - 改后（1.8.3 Core 139776 字节）：annot0 → `300X200 EAD`、annot12 → `400X200 EAD`、annot14 → `600X400 EAD`、annot26 → `200X150 EAD`（旋转标签）、annot42 → `SILENCER/400x200/1/`、annot30 → `500X300 PAD`；原生文字、空白、外框角落结果与改前一致（原生优先，8 pt 容差挡住外框空白）。
+  - 报告：`output\gui-test\probe\pick-before.txt`、`pick-after.txt`；渲染真值图（PDF-XChange 自己渲染的标签外观）：`output\gui-test\probe\render-annot0.png`、`render-annot12.png`、`render-annot26.png`。
+- 发布（1.8.3）：本轮不手工覆盖本机 `Plugins.x64`，而是把 1.8.3 推到 GitHub 仓库 `weixi11/ClickCircle-` 的 `main`（`version.txt` 写成 `v1.8.3`）并打标签 `v1.8.3`，三个发行文件随标签 `dist/` 分发；编辑器里「设置 → 检查更新」走原有在线更新流程（有未保存文档会拒绝，确认后 helper 自动关闭编辑器、替换文件并重启，失败回滚）。远端校验与提交号见下方“发布记录（1.8.3）”。
+- 未覆盖：框选取字目前仍只读页面文字层，框选尺寸标注标签未支持（会落到 OCR 或取不到）；“反序拼接”规则来自本图纸的 PDF-XChange 测量标注实测，其它软件生成的怪 Contents 需要再核对；多行 FreeText 批注未真机验证。
+
+## 早前（1.8.2）：圈注时按住左键拖动也能落圈
+
+- 现象（用户反馈）：连续圈注时必须“原地不动点一下”才放圈；按住左键时鼠标稍微拖动（或手抖），松开后什么也不画，只能重新点。截图里一直用“继续标注”逐个点圈，手一抖就漏一个。
+- 根因：`CircleTool.CompleteGesture` 只在 `!dragged && insidePage` 时调用 `HandlePageClick`；圈注状态没有框选含义，于是“按下-拖动-松开”的整个手势被丢弃。取字状态的拖动是框选，必须保持。
+- 修复：新增 `src\LeftReleaseRouting.cs`（`LeftReleaseAction`：`None` / `Click` / `BoxSelect`，入口 `For(picking, dragged, releaseInsidePage)`）；`CompleteGesture` 改为：取字拖动 → 框选；其余落在页内的释放（无论是否拖动过）→ 一次点击。圈注时按下-拖动-松开在松开点落圈（`HandlePageClick` 用松开点换算页面坐标），取字拖动仍是框选、行为不变。
+- 构建与测试：15 个测试程序共 908 项通过。新增 `tests\LeftReleaseTests.cs` 10 项（圈注单击/拖动都落圈、页外不落圈、取字单击取字、取字拖动框选含页外、拖动与单击结果一致、取字与圈注动作不同）；其余：TextPicker 15、HotkeyBinding 92、HotkeyPanel 35、HotkeyService 145、RegionPicker 71、SeparatorPanel 111、ShxText 91、OCR 142、HistoryPreference 64、Cursor 8、RightClick 21、PanelSize 33、Update 31、AnnotStyle 39。
+- 构建方式：同 1.8.1，用系统 `csc.exe` / `ilasm.exe`、以 `dist\PDFXEdit.dll` 为互操作引用编译；`ClickCircle.Core.dll` 138240 字节、`ClickCircle.pvp` 3072 字节。`build.ps1` 的编译/测试清单与 `package.ps1` 白名单同步加入 `LeftReleaseRouting.cs` / `LeftReleaseTests.cs`。
+- 装机：2026-11-25 15:58:26，先把 1.8.1 三文件、`settings.xml`、`plugin.log` 备份到 `output\install-backup-1.8.1-20261125-155826`，再写入 1.8.2；`Plugins.x64` 三者 SHA-256 与 `dist` 一致：Core `053AA031CAF6D8DF456BEC7B0832D99DBF81F2BC27B1D6E6768BFF65DD5CE1BC`、pvp `78327FC2676835F3270F19B314C74D99C706553EC5A56A9A7EC13377BAEA59AA`、PDFXEdit.dll `2C8C6BA1F29654898AFBA5F7C566F9853E4411E6E05F4B963C93AC2751E208C1`。安装前编辑器已正常卸载（日志 `15:56:25 Unload OK`），重开后加载 1.8.2。
+- 真机验证（2026-11-25 15:37–15:39，独立编辑器副本 `F:\桌面1\PDFEditor - 副本`；插件数据目录用 `CLICKCIRCLE_DATA_DIR` 隔离，窗口 `SW_SHOWNOACTIVATE` 不抢前台，鼠标消息投递、真实光标不动）：
+  - 改前（旧 1.8.0 Core 137216 字节）：面板“继续标注”→单击日志 `Circle ...`；**按住左键拖动 60×40 px 后松开没有任何日志、没有新圈**（复现“拖动就没有标注”）。
+  - 改后（新 1.8.2 Core 138240 字节）：同样的拖动日志 `Circle doc=65541 page=0 x=374.5763 y=350.4629 subject=GUI-TEST`（在松开点落圈）；取字状态拖动仍是 `BoxPicked count=2`（框选未受影响）；右键完成标注复测 `Stamping finished` 且 `RESULT: NO-NEW-WINDOW`（1.8.1 的右键菜单修复没有回退）。见 `output\gui-test\host-drag-before\drag-before-report.txt`、`host-drag-after\drag-after-report.txt`、`host-menu-after\menu-after-report.txt`。
+- 未覆盖：真实鼠标拖动（尤其高 DPI 或慢速拖动）的手感需人工确认；圈注状态长距离拖动现在也会在松开处落一个圈，若需要“按住拖动连续放多个圈”是另一个功能，本轮未实现。
+
+## 早前（1.8.1）：右键完成不再弹菜单、取字提示不挡图纸
+
+- 现象（用户反馈，附截图）：连续圈注中右键完成标注，面板状态已变成“已完成标注”，但编辑器的页面右键菜单同时也弹出来；取字成功后鼠标旁的小提示正好盖住图纸上下一次要点的编号。
+- 根因（右键菜单）：`FinishStamping` 走 `PauseWithStatus`，在 `WM_RBUTTONDOWN` 回调里同步 `ActivateTool(previous)` 把页面工具交回编辑器。工具一停用，紧随其后的 `WM_RBUTTONUP` / `WM_CONTEXTMENU` 就不再经过页面工具，原先 750 ms 的“吞掉窗口”对这条路径完全失效。取字完成（`FinishPicking`）仍处于圈注状态、工具不换，所以只有“右键完成标注”会漏菜单；1.6.2 的验收记录本来就把“右键完成不弹菜单”列为未覆盖、需人工确认。
+- 修复（右键菜单）：
+  - `src\RightClickRouting.cs` 新增 `ContextMenuGuard`：集中右键消息号（`0x0204` / `0x0205` / `0x007B`）、吞掉窗口 750 ms、交回工具延迟 300 ms，以及 `ShouldSwallow` / `ShouldRestore` 判断；`CircleTool` 只通过它处理右键消息。
+  - `src\Plugin.cs`：`FinishStamping` 改为延迟交回工具（300 ms，由现有 150 ms 定时器执行 `RestoreTools`）；延迟期间页面工具仍处于激活状态，吃掉这次右键的抬起与菜单请求，之后再交回编辑器。`Activate` / `Unload` 清掉待执行的交回，避免状态串线。
+- 修复（取字提示）：`src\PickHint.cs` 新增 `PickHintPlacement.BottomRight(workingArea, size)`，提示固定落在鼠标所在屏幕工作区的右下角（12 px 边距），不再跟随鼠标；仍不抢焦点、`WS_EX_TRANSPARENT` 不挡点击、1.4 秒后自动隐藏，文案不变。
+- 修复（状态行排版）：完成标注的状态文案由“已完成标注，主题保留可继续标注”收短为“已完成标注，可继续标注”，取字提示文案也收短（“点击文字取字，右键完成”“未点中文字，可拖框识别”），默认面板宽度下状态行不再折成两行；`statusLabel` 显式 `AutoSize = false`，继续保留 `AutoEllipsis`。
+- 构建与测试：14 个测试程序共 898 项通过。新增 `ContextMenuGuard` 13 项（窗口内的右键抬起/菜单请求被吞、右键按下不吞、左键不受影响、窗口过期不吞、交回延迟必须短于吞掉窗口等），`RightClickTests` 8 → 21 项；新增 `PickHintPlacement` 3 项（右下角落点、副屏偏移、工作区过小时夹紧），`PanelSizeTests` 共 33 项。其余：TextPicker 15、HotkeyBinding 92、HotkeyPanel 35、HotkeyService 145、RegionPicker 71、SeparatorPanel 111、ShxText 91、OCR 142、HistoryPreference 64、Cursor 8、Update 31、AnnotStyle 39。
+- 构建方式：本机仍没有 `build.ps1` 需要的 `PXCEditorCore.x64.dll`，按既有记录用系统 `csc.exe` / `ilasm.exe`、以 `dist\PDFXEdit.dll` 为互操作引用（`/codepage:65001`，资源 `tools\ocr-helper.ps1`）编译；`ClickCircle.Core.dll` 137728 字节、`ClickCircle.pvp` 3072 字节。
+- 装机：2026-11-25 14:28:53，旧 1.8.0 三文件、`settings.xml`、`plugin.log` 备份到 `output\install-backup-1.8.0-20261125-142853`；`Plugins.x64` 三者 SHA-256 与 `dist` 一致：Core `1C86630949FDAA6A6F7D8DABEF681A08FB56A9814E6BF96DD3A1D474EA779917`、pvp `9FF171482F7EC09B87EEAA3B392ACD2982E3CAF96BFC8FCBBF37B49BE2797533`、PDFXEdit.dll `2C8C6BA1F29654898AFBA5F7C566F9853E4411E6E05F4B963C93AC2751E208C1`。重开编辑器日志 `14:29:57 Version 1.8.1`、`Init OK`，快捷键 `Q`、10×10 mm、主题历史保留。
+- 真机验证（2026-11-25 14:46–14:48，独立编辑器副本 `F:\桌面1\PDFEditor - 副本`）：为不干扰正在使用的编辑器，插件数据目录用 `CLICKCIRCLE_DATA_DIR` 隔离；副本窗口以 `SW_SHOWNOACTIVATE` 显示、不抢前台，鼠标输入通过向页面窗口投递消息完成（真实光标/键盘不动），面板用 UI Automation 打开、`BM_CLICK` 触发。
+  - 改前（旧 `ClickCircle.Core.dll` 137216 字节）：面板“继续标注”→左键放圈日志 `Circle ... subject=GUI-TEST`→右键日志 `Stamping finished subject=GUI-TEST`，同时新增 5 个可见 `UIX:Window` 弹出窗（右侧右键菜单及其滚动按钮），即菜单确实弹出；见 `output\gui-test\host-before2\before2-report.txt`。
+  - 改后（新 Core 137728 字节）：同样步骤日志 `Stamping finished subject=GUI-TEST`，**没有新增可见窗口**（`RESULT: NO-NEW-WINDOW`）；见 `output\gui-test\host-after2\after2-report.txt`。
+  - 取字提示：取字成功日志 `Picked FCU count=1`，提示窗矩形 `(1806,1001)-(1908,1028)`，即 1920×1040 工作区右下角留 12 px，与鼠标位置无关；截图 `output\gui-test\host-toast\toast-bottom-right.png`。
+  - 面板状态行离屏渲染：改前 `output\gui-test\panel-1.8.0-finish.png`（“已完成标注，主题保留可继续标注”折成两行），改后 `output\gui-test\panel-1.8.1-finish.png`（“已完成标注，可继续标注”单行）。
+  - 验证脚本与测试 PDF 留在 `output\gui-test\`：`bg-host-test2.ps1`（右键菜单前后对比）、`bg-host-toast.ps1`（提示位置）、`ClickCircle_gui_fixture.pdf`。
+- 未覆盖：150%/200% DPI 下提示位置与状态行观感需目视；用户真实鼠标右键的手感与菜单消失瞬间的视觉表现仍需人工确认（自动化用消息投递、未动真实光标）；多屏时提示落在鼠标所在屏幕的右下角。
+
+## 早前（1.8.0）：标注字段、类型与样式扩展
 
 - 需求：不只套主题，还要作者、标签/正文；不只椭圆，还要周长、面积等测量标注；颜色与其它参数可配。
 - 方案（已与用户确认）：仍用编辑器原生工具绘制（周长/面积多点绘制保持原生交互），插件监听 `e.annots.inserted`，对新增标注自动写入样式。

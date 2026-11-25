@@ -39,6 +39,22 @@ internal static class TextPickerTests
         ++checkedCases;
     }
 
+    private static void ExpectLabel(string contents, string expected)
+    {
+        string actual = AnnotationLabel.FromContents(contents);
+        if (actual != expected)
+            throw new Exception("Label: expected " + (expected ?? "<none>") + ", got " + (actual ?? "<none>"));
+        ++checkedCases;
+    }
+
+    private static void ExpectMeasurement(string line, bool expected)
+    {
+        bool actual = AnnotationLabel.IsMeasurementValue(line);
+        if (actual != expected)
+            throw new Exception("Measurement line: expected " + expected + ", got " + actual + " for [" + line + "]");
+        ++checkedCases;
+    }
+
     public static int Main()
     {
         try
@@ -76,6 +92,28 @@ internal static class TextPickerTests
             }
             Expect(otherBaseline, 2, "LI-278");
             Expect(otherBaseline, 9, "LI-282");
+
+            // 标注标签：PDF-XChange 测量标注的 Contents（反斜杠分行 + 末尾测量值）还原成可见文字
+            ExpectLabel("EAD\\300X200\\\n50.89 m ", "300X200 EAD");
+            ExpectLabel("EAG\\500X500\\1\\\n0.6 m ", "1 500X500 EAG");
+            ExpectLabel("EAG\\500X500\\1\\", "1 500X500 EAG");
+            ExpectLabel("EAL/3000x550/1/\r2.91 m ", "EAL/3000x550/1/");
+            ExpectLabel("SILENCER/400x200/1/\r1.57 m ", "SILENCER/400x200/1/");
+            ExpectLabel("300X200 EAD", "300X200 EAD");
+            ExpectLabel("HELLO\nWORLD", "HELLO WORLD");
+            ExpectLabel("50.89 m", null);
+            ExpectLabel("", null);
+            ExpectLabel(null, null);
+            ExpectLabel("  \r\n ", null);
+            ExpectMeasurement("50.89 m ", true);
+            ExpectMeasurement("0.6 m\u00b2", true);
+            ExpectMeasurement("1,234.5", true);
+            ExpectMeasurement("1 m", true);
+            ExpectMeasurement("300X200", false);
+            ExpectMeasurement("EAD", false);
+            ExpectMeasurement("300 x 200", false);
+            ExpectMeasurement("", false);
+
             Console.WriteLine("TextPicker: " + checkedCases + " cases passed.");
             return 0;
         }

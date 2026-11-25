@@ -42,6 +42,8 @@ $pluginPath = Join-Path $stagePath 'ClickCircle.Core.dll'
     (Join-Path $PSScriptRoot 'src\SubjectHistory.cs') `
     (Join-Path $PSScriptRoot 'src\ModeCursor.cs') `
     (Join-Path $PSScriptRoot 'src\RightClickRouting.cs') `
+    (Join-Path $PSScriptRoot 'src\LeftReleaseRouting.cs') `
+    (Join-Path $PSScriptRoot 'src\AnnotationLabel.cs') `
     (Join-Path $PSScriptRoot 'src\CircleTool.cs') `
     (Join-Path $PSScriptRoot 'src\TextRegionPicker.cs') `
     (Join-Path $PSScriptRoot 'src\ShxTextReader.cs') `
@@ -101,7 +103,7 @@ if ($RunTests) {
     & $serviceTestPath
     if ($LASTEXITCODE -ne 0) { throw 'Hotkey routing tests failed.' }
 
-    foreach ($testName in @('RegionPickerTests', 'SeparatorPanelTests', 'ShxTextTests', 'OcrTests', 'HistoryPreferenceTests', 'CursorTests', 'RightClickTests', 'PanelSizeTests', 'UpdateTests', 'AnnotStyleTests')) {
+    foreach ($testName in @('RegionPickerTests', 'SeparatorPanelTests', 'ShxTextTests', 'OcrTests', 'HistoryPreferenceTests', 'CursorTests', 'RightClickTests', 'LeftReleaseTests', 'PanelSizeTests', 'UpdateTests', 'AnnotStyleTests')) {
         $selectionTestPath = Join-Path $stagePath ($testName + '.exe')
         & $compilerPath /nologo /target:exe /platform:x64 /optimize+ `
             "/out:$selectionTestPath" "/reference:$pluginPath" "/reference:$interopPath" `

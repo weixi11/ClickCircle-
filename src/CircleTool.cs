@@ -87,22 +87,23 @@ namespace ClickCircle
                     owner.Pause();
                     return;
                 }
-                // 取字时右键完成：保留已取片段，切到连续圈注；并短暂吞掉这次右键菜单。
-                if ((e.Code == 0x0205 || e.Code == 0x007B) &&
-                    DateTime.UtcNow < contextMenuBlockedUntilUtc)
+                // 右键完成取字/标注：完成之后编辑器还会收到这次右键的抬起与菜单请求，
+                // 在吞掉窗口内一律吃掉，避免完成标注时再弹出编辑器右键菜单。
+                if (ContextMenuGuard.ShouldSwallow(e.Code, DateTime.UtcNow, contextMenuBlockedUntilUtc))
                 {
                     e.Handled = true;
                     return;
                 }
-                if (e.Code == 0x0204)
+                if (e.Code == ContextMenuGuard.MessageRightButtonDown)
                 {
                     RightClickAction action = RightClickRouting.For(
                         owner.IsPicking, owner.IsOcrPicking, owner.IsStamping);
                     if (action != RightClickAction.None)
                     {
                         e.Handled = true;
-                        contextMenuBlockedUntilUtc = DateTime.UtcNow.AddMilliseconds(750);
+                        contextMenuBlockedUntilUtc = ContextMenuGuard.BlockFrom(DateTime.UtcNow);
                         CancelGesture();
+                        // 完成标注会推迟交回工具，保证工具还活着吃完这次右键菜单消息。
                         if (action == RightClickAction.FinishPicking) owner.FinishPicking();
                         else owner.FinishStamping();
                         return;
@@ -266,18 +267,21 @@ namespace ClickCircle
                 };
             }
             bool insidePage = Contains(gesturePageRect, point);
+            // 圈注状态按住左键时拖动过鼠标，也要按松开点放圈；原来必须原地不动，
+            // 手一抖就一个圈也放不出来。取字状态的拖动仍然走框选。
+            LeftReleaseAction action = LeftReleaseRouting.For(wasPicking, wasDragged, insidePage);
             PXC_Point pagePoint = new PXC_Point();
-            if (!wasDragged && insidePage)
+            if (action == LeftReleaseAction.Click)
                 pagePoint = view.Layout.DevicePointToPagePoint(pageIndex, ref point, true);
 
             // ReleaseMouse can synchronously deliver capture-lost; clear state before callbacks.
             CancelGesture();
-            if (wasPicking && wasDragged)
+            if (action == LeftReleaseAction.BoxSelect)
             {
                 owner.HandlePageBoxSelection(view, pageIndex, result, pageRegion, displayRotation);
                 return;
             }
-            if (!wasDragged && insidePage)
+            if (action == LeftReleaseAction.Click)
                 owner.HandlePageClick(view, pageIndex, pagePoint);
         }
 
@@ -481,6 +485,9 @@ namespace ClickCircle
 
     public static class TextPicker
     {
+        /// <summary>点击位置离标注可见部分多近才把标注标签当作取字结果（页面坐标，单位 pt）。</summary>
+        private const double AnnotationLabelHitTolerance = 8.0;
+
         public struct Glyph
         {
             public char Character;
@@ -500,7 +507,87 @@ namespace ClickCircle
             {
                 // SHX originals can still be usable when the native text layer is damaged.
             }
-            return ShxTextReader.TryGetText(ShxTextReader.Read(page), point, out word);
+            if (ShxTextReader.TryGetText(ShxTextReader.Read(page), point, out word))
+                return true;
+            // 图纸上的尺寸/设备标签经常是测量标注的标签文字（不在页面文字层里），
+            // 点到这类标注附近时按标注 Contents 取它显示的文字。
+            return TryGetAnnotationWord(page, point, out word);
+        }
+
+        /// <summary>点击位置附近标注的标签文字；取不到返回 false。</summary>
+        private static bool TryGetAnnotationWord(IPXC_Page page, PXC_Point point, out string word)
+        {
+            word = null;
+            string bestLabel = null;
+            double bestDistance = AnnotationLabelHitTolerance;
+            try
+            {
+                uint count = page.GetAnnotsCount();
+                for (uint index = count; index > 0; --index)
+                {
+                    IPXC_Annotation annotation = page.GetAnnot(index - 1);
+                    if (annotation == null) continue;
+                    try
+                    {
+                        // 不可见/隐藏/不显示的标注不参与取字。
+                        if ((annotation.Flags & 35u) != 0) continue;
+                        IPXC_AnnotData data = annotation.Data;
+                        if (data == null) continue;
+                        string label = AnnotationLabel.FromContents(data.Contents);
+                        if (label == null) continue;
+                        double distance = DistanceToAnnotation(annotation, data, point);
+                        // 多条标注的线可能靠得很近：取离点击位置最近的一条，同样近时取上层（索引大）的。
+                        if (distance > bestDistance) continue;
+                        bestDistance = distance - 0.01;
+                        bestLabel = label;
+                    }
+                    catch (COMException) { }
+                }
+            }
+            catch (COMException) { }
+            word = bestLabel;
+            return bestLabel != null;
+        }
+
+        /// <summary>点击位置到标注可见部分（折线、文本框）的距离，用来避免点到标注外框空白处也取字。</summary>
+        private static double DistanceToAnnotation(IPXC_Annotation annotation, IPXC_AnnotData data,
+            PXC_Point point)
+        {
+            var poly = data as IPXC_AnnotData_Poly;
+            if (poly != null)
+            {
+                IPXC_PolygonSrcF vertices = poly.Vertices;
+                if (vertices != null && vertices.Count >= 2)
+                {
+                    double best = Double.MaxValue;
+                    PXC_PointF previous = vertices.get_Item(0);
+                    for (uint index = 1; index < vertices.Count; ++index)
+                    {
+                        PXC_PointF current = vertices.get_Item(index);
+                        best = Math.Min(best, DistanceToSegment(point.x, point.y,
+                            previous.x, previous.y, current.x, current.y));
+                        previous = current;
+                    }
+                    return best;
+                }
+            }
+            PXC_Rect rect = annotation.get_Rect();
+            return Contains(rect, point) ? 0 : Double.MaxValue;
+        }
+
+        private static double DistanceToSegment(double x, double y,
+            double x1, double y1, double x2, double y2)
+        {
+            double dx = x2 - x1;
+            double dy = y2 - y1;
+            double lengthSquared = dx * dx + dy * dy;
+            if (lengthSquared < 0.000001)
+                return Math.Sqrt((x - x1) * (x - x1) + (y - y1) * (y - y1));
+            double t = ((x - x1) * dx + (y - y1) * dy) / lengthSquared;
+            t = Math.Max(0, Math.Min(1, t));
+            double px = x1 + t * dx;
+            double py = y1 + t * dy;
+            return Math.Sqrt((x - px) * (x - px) + (y - py) * (y - py));
         }
 
         private static bool TryGetNativeWord(IPXC_Page page, PXC_Point point, out string word)

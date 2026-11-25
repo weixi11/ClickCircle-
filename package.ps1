@@ -1,6 +1,6 @@
 [CmdletBinding()]
 param(
-    [string] $Version = '1.8.0',
+    [string] $Version = '1.8.3',
     [string] $OutputDirectory = (Join-Path $PSScriptRoot 'release'),
     [switch] $IncludeDrawingDemo
 )
@@ -34,6 +34,8 @@ $requiredFiles = @(
     'src\SubjectHistory.cs',
     'src\ModeCursor.cs',
     'src\RightClickRouting.cs',
+    'src\LeftReleaseRouting.cs',
+    'src\AnnotationLabel.cs',
     'src\UpdateService.cs',
     'src\HotkeyBinding.cs',
     'src\HotkeyScope.cs',
@@ -61,6 +63,7 @@ $requiredFiles = @(
     'tests\HistoryPreferenceTests.cs',
     'tests\CursorTests.cs',
     'tests\RightClickTests.cs',
+    'tests\LeftReleaseTests.cs',
     'tests\PanelSizeTests.cs',
     'tests\UpdateTests.cs',
     'tests\OcrHostTests.cs',

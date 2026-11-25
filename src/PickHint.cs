@@ -5,7 +5,25 @@ using System.Windows.Forms;
 namespace ClickCircle
 {
     /// <summary>
-    /// 取字成功时在鼠标旁短暂显示的小提示。不抢焦点、不挡点击，1.4 秒后自动隐藏。
+    /// 取字提示的落点：屏幕工作区右下角。提示固定待在角落，不跟着鼠标走，
+    /// 避免挡住图纸上正在点的下一个编号。
+    /// </summary>
+    public static class PickHintPlacement
+    {
+        /// <summary>提示与屏幕边缘留的距离。</summary>
+        public const int Margin = 12;
+
+        public static Point BottomRight(Rectangle workingArea, Size size)
+        {
+            int x = workingArea.Right - size.Width - Margin;
+            int y = workingArea.Bottom - size.Height - Margin;
+            return new Point(Math.Max(workingArea.Left, x), Math.Max(workingArea.Top, y));
+        }
+    }
+
+    /// <summary>
+    /// 取字成功时在屏幕右下角短暂显示的小提示。不抢焦点、不挡点击，1.4 秒后自动隐藏。
+    /// 位置固定在角落而不是鼠标旁：连续取字时鼠标旁的小窗会盖住下一次要点的编号。
     /// </summary>
     internal sealed class PickHintForm : Form
     {
@@ -48,22 +66,17 @@ namespace ClickCircle
             }
         }
 
-        /// <summary>在屏幕坐标 point 附近显示 text，已显示时只更新文字并重新计时。</summary>
-        public void ShowAt(string text, Point point)
+        /// <summary>在 anchorPoint 所在屏幕的右下角显示 text，已显示时只更新文字并重新计时。</summary>
+        public void ShowAt(string text, Point anchorPoint)
         {
             label.Text = text ?? String.Empty;
             if (!Visible)
                 Show();
             else
                 PerformLayout();
-            Rectangle area = Screen.FromPoint(point).WorkingArea;
-            int x = point.X + 18;
-            int y = point.Y + 22;
-            if (x + Width > area.Right)
-                x = point.X - Width - 18;
-            if (y + Height > area.Bottom)
-                y = point.Y - Height - 22;
-            Location = new Point(Math.Max(area.Left, x), Math.Max(area.Top, y));
+            Point location = PickHintPlacement.BottomRight(
+                Screen.FromPoint(anchorPoint).WorkingArea, Size);
+            Location = location;
             timer.Stop();
             timer.Start();
         }
