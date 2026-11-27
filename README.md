@@ -1,6 +1,6 @@
 # PDF-XChange 取字连续圈注（ClickCircle 1.8.4）
 
-原生 `.pvp` 入口 + C# 工具，在便携版 PDF-XChange Editor 10.8.4 / 11.0.1 x64 中加载运行；使用编辑器标准的 `/Circle` 椭圆标注与自带撤销、保存流程。详细测试记录见 `VALIDATION.md`。
+原生 `.pvp` 入口 + C# 工具，在便携版 PDF-XChange Editor 10.8.4 / 11.0.1 x64 中加载运行；使用编辑器标准的 `/Circle` 椭圆标注与自带撤销、保存流程。详细测试记录见 `VALIDATION.md`；新会话接手本项目先读 `AGENTS.md`（项目规则、构建/测试/发布/真机验证流程）。
 
 ## 功能
 

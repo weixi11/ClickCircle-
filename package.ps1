@@ -55,6 +55,7 @@ $requiredFiles = @(
     'package.ps1',
     'README.md',
     'VALIDATION.md',
+    'AGENTS.md',
     'tests\TextPickerTests.cs',
     'tests\RegionPickerTests.cs',
     'tests\ShxTextTests.cs',
