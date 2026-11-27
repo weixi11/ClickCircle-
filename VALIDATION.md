@@ -18,6 +18,12 @@
   - 证据：`output\gui-test\host-history-186\{before,default,off,settings}\*-panel.png`、`settings\settings-settings.png`、对应 `*-report.txt`。
 - 发布（1.8.6）：已推送到 GitHub `weixi11/ClickCircle-` 的 `main`（`version.txt` = `v1.8.6`）并打标签 `v1.8.6`；远端校验与提交号见下方“发布记录（1.8.6）”。
 - 未覆盖：关掉历史后原有主题（含固定项）仍保留在 `settings.xml`，重新打开即可恢复；隐藏状态下用户手动把面板拖大不会自动缩回；没有做“只隐藏界面、仍继续记录”的独立选项。
+### 发布记录（1.8.6）
+
+- 仓库：`https://github.com/weixi11/ClickCircle-`（公开），提交 `ae5d6c8`（“1.8.6: 设置页新增“显示主题历史”开关”），标签 `v1.8.6`。
+- 远端校验（2026-11-27 17:52）：`raw.githubusercontent.com/weixi11/ClickCircle-/main/version.txt` 返回 `v1.8.6`；`v1.8.6/dist/` 三个文件下载后 SHA-256 与本地 `dist` 完全一致：Core `7FE8724031108BC109BA0A4FCAA821365D1DE2E8EF54FAA757D1BC869418ABD6`（145408 字节）、pvp `796227E4963A6041B2366D04AD86258BD2B9785B9BCE9963A1F81B64BEB4D1B3`（3072）、PDFXEdit.dll `2C8C6BA1F29654898AFBA5F7C566F9853E4411E6E05F4B963C93AC2751E208C1`（868864）。
+- 本机升级方式：用户当前运行 1.8.4（编辑器已打开、有未保存文档）：保存文档 → 设置 → 检查更新 → `v1.8.6`（含 1.8.5 校对窗开关 + 1.8.6 主题历史开关）；确认后 helper 自动关闭编辑器、备份、替换并重启，失败回滚。
+- 回滚：`output\gui-test\host-history-186\core-1.8.5\`（1.8.5）、`output\gui-test\host-ocr-review\core-1.8.4\`（1.8.4）、`output\gui-test\host-toast-184\core-1.8.2\`（1.8.2），需要时退出编辑器后复制回 `Plugins.x64`。
 ## 早前（1.8.5）：设置页新增“区域识别后显示校对窗”开关
 
 - 需求（用户截图，红箭头指向“区域识别校对”窗口）：区域识别弹的校对窗要在设置里加个开关。
