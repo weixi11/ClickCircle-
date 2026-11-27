@@ -49,6 +49,7 @@ namespace ClickCircle
         private Label styleStatusLabel;
         private Button styleEditorButton;
         private Label updateStatusLabel;
+        private CheckBox ocrReviewCheckBox;
         private PickHintForm pickHint;
         private string versionText = String.Empty;
 
@@ -70,6 +71,7 @@ namespace ClickCircle
         public event Action HotkeyCaptureStopped;
         public event Action HistoryChanged;
         public event Action OcrLanguageChanged;
+        public event Action OcrReviewChanged;
         public event Action CheckUpdateRequested;
         public event Action StyleEditRequested;
 
@@ -319,7 +321,7 @@ namespace ClickCircle
             Controls.Add(settingsPage);
 
             TableLayoutPanel layout = new TableLayoutPanel {
-                Dock = DockStyle.Fill, ColumnCount = 1, RowCount = 12, Margin = Padding.Empty,
+                Dock = DockStyle.Fill, ColumnCount = 1, RowCount = 13, Margin = Padding.Empty,
                 BackColor = PageBack
             };
             layout.RowStyles.Add(new RowStyle(SizeType.Absolute, 32F));
@@ -330,6 +332,7 @@ namespace ClickCircle
             layout.RowStyles.Add(new RowStyle(SizeType.Absolute, 28F));
             layout.RowStyles.Add(new RowStyle(SizeType.Absolute, 48F));
             layout.RowStyles.Add(new RowStyle(SizeType.Absolute, 44F));
+            layout.RowStyles.Add(new RowStyle(SizeType.Absolute, 40F));
             layout.RowStyles.Add(new RowStyle(SizeType.Percent, 100F));
             layout.RowStyles.Add(new RowStyle(SizeType.Absolute, 14F));
             layout.RowStyles.Add(new RowStyle(SizeType.Absolute, 48F));
@@ -472,6 +475,27 @@ namespace ClickCircle
             styleRow.Controls.Add(styleEditorButton, 2, 0);
             layout.Controls.Add(styleRow, 0, 7);
 
+            TableLayoutPanel ocrRow = new TableLayoutPanel {
+                Dock = DockStyle.Fill, ColumnCount = 2, RowCount = 1, Margin = Padding.Empty,
+                BackColor = PageBack
+            };
+            ocrRow.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, 72F));
+            ocrRow.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100F));
+            Label ocrLabel = MakeLabel("区域识别", "区域识别");
+            ocrLabel.ForeColor = TextColor;
+            ocrReviewCheckBox = new CheckBox {
+                Name = "ShowOcrReview", AccessibleName = "区域识别后显示校对窗",
+                Text = "识别后显示校对窗（关闭则直接采用结果）", Dock = DockStyle.Fill,
+                AutoSize = false, Checked = true, TabIndex = 11, ForeColor = TextColor,
+                TextAlign = ContentAlignment.MiddleLeft
+            };
+            ocrReviewCheckBox.CheckedChanged += delegate {
+                if (!applyingSettings) Raise(OcrReviewChanged);
+            };
+            ocrRow.Controls.Add(ocrLabel, 0, 0);
+            ocrRow.Controls.Add(ocrReviewCheckBox, 1, 0);
+            layout.Controls.Add(ocrRow, 0, 8);
+
             TableLayoutPanel infoPanel = new TableLayoutPanel {
                 Dock = DockStyle.Fill, ColumnCount = 1, RowCount = 3, Margin = Padding.Empty,
                 BackColor = PageBack
@@ -480,7 +504,7 @@ namespace ClickCircle
             infoPanel.RowStyles.Add(new RowStyle(SizeType.AutoSize));
             infoPanel.RowStyles.Add(new RowStyle(SizeType.Percent, 100F));
             settingsHint = new Label {
-                Text = "取字与主题历史在主页操作；分隔符、圈注尺寸、快捷键与标注样式修改后立即生效。",
+                Text = "取字与主题历史在主页操作；分隔符、圈注尺寸、快捷键、标注样式与区域识别校对窗修改后立即生效。",
                 AutoSize = true, ForeColor = Muted, Font = new Font(Font.FontFamily, 8.5F),
                 Margin = new Padding(0, 8, 0, 0), MaximumSize = new Size(400, 0)
             };
@@ -491,7 +515,7 @@ namespace ClickCircle
             };
             infoPanel.Controls.Add(settingsHint, 0, 0);
             infoPanel.Controls.Add(updateStatusLabel, 0, 1);
-            layout.Controls.Add(infoPanel, 0, 8);
+            layout.Controls.Add(infoPanel, 0, 9);
 
             TableLayoutPanel versionRow = new TableLayoutPanel {
                 Dock = DockStyle.Fill, ColumnCount = 2, RowCount = 1, Margin = Padding.Empty,
@@ -510,15 +534,15 @@ namespace ClickCircle
             versionRow.Controls.Add(updateButton, 1, 0);
             layout.Controls.Add(new Panel {
                 Dock = DockStyle.Fill, BackColor = BorderColor, Margin = new Padding(0, 7, 0, 7)
-            }, 0, 9);
-            layout.Controls.Add(versionRow, 0, 10);
+            }, 0, 10);
+            layout.Controls.Add(versionRow, 0, 11);
 
             Label footer = new Label {
                 Text = "设置页仅调整标注参数", Dock = DockStyle.Fill,
                 TextAlign = ContentAlignment.MiddleLeft, ForeColor = Muted,
                 Font = new Font(Font.FontFamily, 8.5F)
             };
-            layout.Controls.Add(footer, 0, 11);
+            layout.Controls.Add(footer, 0, 12);
         }
 
         private void ShowSettings(bool show)
@@ -910,6 +934,8 @@ namespace ClickCircle
                 heightInput.Value = PluginSettings.ClampDimension(settings.HeightMm, 1.2);
                 Separator = settings.Separator;
                 OcrLanguage = settings.OcrLanguage;
+                if (ocrReviewCheckBox != null)
+                    ocrReviewCheckBox.Checked = settings.ShowOcrReview;
                 AnnotStyle style = (settings.Style ?? AnnotStyle.Default()).Clone();
                 style.Normalize();
                 Style = style;
@@ -939,6 +965,7 @@ namespace ClickCircle
                 PickHotkey = hotkey.ToStorage(),
                 Separator = Separator,
                 OcrLanguage = OcrLanguage,
+                ShowOcrReview = ShowOcrReview,
                 Style = (Style ?? AnnotStyle.Default()).Clone(),
                 SubjectHistory = history.Export(),
                 PanelWidth = ClientSize.Width,
@@ -948,6 +975,12 @@ namespace ClickCircle
 
         /// <summary>新标注自动套用的样式；由插件在“编辑标注样式”确定后写回。</summary>
         public AnnotStyle Style { get; set; }
+
+        /// <summary>区域识别完成后是否弹出校对窗；关闭则直接把识别结果并入主题/圈注。</summary>
+        public bool ShowOcrReview
+        {
+            get { return ocrReviewCheckBox == null || ocrReviewCheckBox.Checked; }
+        }
 
         /// <summary>设置页“标注样式”一行的状态文字。</summary>
         public void UpdateStyleStatus()
@@ -1224,6 +1257,7 @@ namespace ClickCircle
             PickHotkey = HotkeyBinding.Default.ToStorage();
             Separator = "/";
             OcrLanguage = String.Empty;
+            ShowOcrReview = true;
             SubjectHistory = new List<SubjectHistoryEntry>();
             PanelWidth = StampPanel.DefaultPanelWidth;
             PanelHeight = StampPanel.DefaultPanelHeight;
@@ -1237,6 +1271,9 @@ namespace ClickCircle
         public string PickHotkey { get; set; }
         public string Separator { get; set; }
         public string OcrLanguage { get; set; }
+
+        /// <summary>区域识别完成后是否弹出校对窗；默认开，旧 settings.xml 没有这一项也按开处理。</summary>
+        public bool ShowOcrReview { get; set; }
         public List<SubjectHistoryEntry> SubjectHistory { get; set; }
 
         /// <summary>新标注自动套用的样式（字段/颜色/边框/测量参数）。</summary>
@@ -1296,6 +1333,7 @@ namespace ClickCircle
                     PickHotkey = HotkeyBinding.ParseOrDefault(PickHotkey).ToStorage(),
                     Separator = Separator ?? "/",
                     OcrLanguage = OcrService.NormalizeLanguagePreference(OcrLanguage),
+                    ShowOcrReview = ShowOcrReview,
                     Style = NormalizeStyle(Style),
                     SubjectHistory = new SubjectHistory(SubjectHistory).Export(),
                     PanelWidth = ClampPanelWidth(PanelWidth, StampPanel.DefaultPanelWidth),

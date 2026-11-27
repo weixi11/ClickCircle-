@@ -90,6 +90,7 @@ internal static class HistoryPreferenceTests
         {
             PluginSettings settings = new PluginSettings {
                 WidthMm = 7, HeightMm = 8, Separator = " ", PickHotkey = "F9", OcrLanguage = "en-US",
+                ShowOcrReview = false,
                 SubjectHistory = new List<SubjectHistoryEntry> {
                     new SubjectHistoryEntry { Subject = "LI-058/LI-058/LI-282", Pinned = true },
                     new SubjectHistoryEntry { Subject = "\u5e94\u6025\u7167\u660e  / B" }
@@ -99,6 +100,8 @@ internal static class HistoryPreferenceTests
             PluginSettings loaded = PluginSettings.Load(path);
             Expect(loaded.OcrLanguage == "en-US" && loaded.SubjectHistory.Count == 2 &&
                 loaded.SubjectHistory[0].Pinned, "Language and pinned themes survive disk reload.");
+            Expect(!loaded.ShowOcrReview, "OCR review switch survives disk reload.");
+            Expect(new PluginSettings().ShowOcrReview, "OCR review window is on by default.");
             Expect(loaded.WidthMm == 7 && loaded.HeightMm == 8 && loaded.Separator == " " &&
                 loaded.PickHotkey == "F9", "New fields preserve existing settings.");
             Expect(loaded.SubjectHistory[1].Subject == "\u5e94\u6025\u7167\u660e  / B",
@@ -112,6 +115,7 @@ internal static class HistoryPreferenceTests
             loaded = PluginSettings.Load(path);
             Expect(loaded.OcrLanguage == "" && loaded.SubjectHistory.Count == 0 &&
                 loaded.WidthMm == 4 && loaded.Separator == "-", "Legacy settings get safe defaults.");
+            Expect(loaded.ShowOcrReview, "Legacy settings show the OCR review window by default.");
             loaded.OcrLanguage = "en-US\";bad";
             loaded.SubjectHistory = null;
             Expect(loaded.Save(path) && PluginSettings.Load(path).OcrLanguage == "" &&
@@ -188,6 +192,19 @@ internal static class HistoryPreferenceTests
             grid.Focus();
             Expect(panel.IsTextInputFocused(), "Grid keyboard navigation is protected from pick shortcuts.");
             Expect(grid.Height >= 160 && grid.Width > 400, "History fits the compact panel.");
+
+            int ocrReviewChanges = 0;
+            panel.OcrReviewChanged += delegate { ocrReviewChanges++; };
+            CheckBox ocrReview = (CheckBox)panel.Controls.Find("ShowOcrReview", true)[0];
+            Expect(ocrReview.Checked && panel.ShowOcrReview, "OCR review switch defaults to on.");
+            ocrReview.Checked = false;
+            Expect(ocrReviewChanges == 1 && !panel.ShowOcrReview && !panel.GetSettings().ShowOcrReview,
+                "Turning the OCR review switch off takes effect and is saved.");
+            panel.ApplySettings(new PluginSettings { ShowOcrReview = false });
+            Expect(!ocrReview.Checked && ocrReviewChanges == 1,
+                "Loading settings restores the switch without emitting a save.");
+            panel.ApplySettings(new PluginSettings());
+            Expect(ocrReview.Checked && panel.ShowOcrReview, "Default settings turn the review window back on.");
             panel.Hide();
         }
     }

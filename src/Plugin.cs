@@ -229,7 +229,7 @@ namespace ClickCircle
         public string Name { get { return "取字连续圈注"; } }
         public string CopyrightInfo { get { return "ClickCircle 2026"; } }
         /// <summary>插件版本号，面板标题显示同一数值。</summary>
-        private const uint PluginVersionNumber = (1U << 16) | (8U << 8) | 4U;
+        private const uint PluginVersionNumber = (1U << 16) | (8U << 8) | 5U;
 
         public uint version { get { return PluginVersionNumber; } }
 
@@ -263,6 +263,7 @@ namespace ClickCircle
             Panel.SeparatorChanged += SaveSettings;
             Panel.HistoryChanged += SaveSettings;
             Panel.OcrLanguageChanged += SaveSettings;
+            Panel.OcrReviewChanged += SaveSettings;
             Panel.PanelSizeChanged += SaveSettings;
             Panel.HotkeyChanged += OnHotkeyChanged;
             Panel.HotkeyCaptureStarted += OnHotkeyCaptureStarted;
@@ -863,13 +864,22 @@ namespace ClickCircle
             StampMode previous = mode;
             int request = ++ocrGeneration;
             uint documentId = document.ID;
+            bool showReview = Panel.ShowOcrReview;
             SetMode(StampMode.Reviewing, "正在准备识别区域");
             // Defer the modal until the page tool has returned from the mouse-up callback.
             IntPtr dispatcher = Panel.Handle;
             Panel.BeginInvoke((Action)delegate {
+                bool directStarted = false;
                 try
                 {
                     if (!IsOcrContextCurrent(documentId, pageIndex, request)) return;
+                    if (!showReview)
+                    {
+                        // 设置里关掉了校对窗：后台识别完直接采用结果，不弹窗。
+                        directStarted = StartDirectOcr(previous, document, pageIndex, region, rotation,
+                            documentId, request);
+                        return;
+                    }
                     using (Bitmap bitmap = OcrRegionRenderer.Render(Instance,
                         document.CoreDoc.Pages[pageIndex], region, rotation))
                     using (OcrReviewDialog review = new OcrReviewDialog(bitmap, Panel.Separator, Panel.OcrLanguage))
@@ -915,7 +925,7 @@ namespace ClickCircle
                 }
                 finally
                 {
-                    if (request == ocrGeneration)
+                    if (request == ocrGeneration && !directStarted)
                     {
                         ocrReview = null;
                         if (mode == StampMode.Reviewing)
@@ -923,6 +933,94 @@ namespace ClickCircle
                     }
                 }
             });
+        }
+
+        /// <summary>设置里关掉校对窗时：后台识别，完成后直接把结果并入取字/圈注，不弹窗。</summary>
+        private bool StartDirectOcr(StampMode previous, IPXV_Document document, uint pageIndex,
+            PXC_Rect region, int rotation, uint documentId, int request)
+        {
+            Bitmap bitmap = OcrRegionRenderer.Render(Instance, document.CoreDoc.Pages[pageIndex],
+                region, rotation);
+            string language = Panel.OcrLanguage;
+            Log(String.Format(System.Globalization.CultureInfo.InvariantCulture,
+                "OcrDirect doc={0} page={1} region={2:F3},{3:F3},{4:F3},{5:F3} rotation={6}",
+                documentId, pageIndex, region.left, region.bottom, region.right, region.top, rotation));
+            try
+            {
+                ThreadPool.QueueUserWorkItem(delegate {
+                    OcrResult result;
+                    try
+                    {
+                        using (bitmap)
+                        {
+                            result = OcrService.Recognize(bitmap, language, CancellationToken.None);
+                            if (result.LanguageUnavailable && language.Length != 0)
+                                result = OcrService.Recognize(bitmap, String.Empty, CancellationToken.None);
+                        }
+                    }
+                    catch (Exception exception)
+                    {
+                        result = new OcrResult { Error = exception.Message };
+                    }
+                    OcrResult completed = result;
+                    try
+                    {
+                        if (Panel == null || Panel.IsDisposed || !Panel.IsHandleCreated) return;
+                        Panel.BeginInvoke((Action)delegate {
+                            try
+                            {
+                                if (!IsOcrContextCurrent(documentId, pageIndex, request)) return;
+                                CompleteDirectOcr(previous, completed);
+                            }
+                            catch (Exception exception) { Log("OCR FAILED " + exception); }
+                            finally
+                            {
+                                if (request == ocrGeneration)
+                                {
+                                    ocrReview = null;
+                                    if (mode == StampMode.Reviewing)
+                                        PauseWithStatus("已暂停：识别区域已失效");
+                                }
+                            }
+                        });
+                    }
+                    catch (InvalidOperationException) { }
+                });
+                return true;
+            }
+            catch (Exception)
+            {
+                bitmap.Dispose();
+                throw;
+            }
+        }
+
+        private void CompleteDirectOcr(StampMode previous, OcrResult result)
+        {
+            string error = result == null ? null : result.Error;
+            string[] fragments = new string[0];
+            if (result != null && error == null)
+                fragments = OcrService.ReviewFragments(String.Join(Environment.NewLine, result.Fragments));
+            if (fragments.Length == 0)
+            {
+                SetMode(previous, error != null ? "区域识别失败：" + error : "未识别到文字");
+                Log("OcrDirect empty" + (error != null ? " error=" + error : ""));
+                return;
+            }
+            if (previous == StampMode.Picking)
+            {
+                // 取字过程中框选落到 OCR：识别结果并入本次取字，右键再完成。
+                Panel.AppendPickedFragments(fragments);
+                SetMode(StampMode.Picking, PickingHint);
+                Panel.ShowPickHint(String.Join(" / ", fragments), Panel.PickedFragmentCount);
+            }
+            else
+            {
+                Panel.SetPickedFragments(fragments);
+                SetMode(StampMode.Stamping, null);
+            }
+            Log("OcrDirectPicked count=" + fragments.Length +
+                " total=" + Panel.PickedFragmentCount + " subject=" + Panel.Subject);
         }
 
         private void SaveSettings()

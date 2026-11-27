@@ -1,8 +1,23 @@
-# 取字连续圈注 验收记录（1.8.4）
+# 取字连续圈注 验收记录（1.8.5）
 
 日期：2026-11-27。宿主：便携版 PDF-XChange Editor 10.8.4.409 x64（`F:\桌面1\PDFEditor`）。
 
-## 本轮（1.8.4）：取字提示回到鼠标旁、半透明、0.8 秒消失
+## 本轮（1.8.5）：设置页新增“区域识别后显示校对窗”开关
+
+- 需求（用户截图，红箭头指向“区域识别校对”窗口）：区域识别弹的校对窗要在设置里加个开关。
+- 修改：
+  - `PluginSettings` 新增 `ShowOcrReview`（默认 `true`；旧 `settings.xml` 没有该节点也按 `true`）。设置页在“标注样式”下面新增“区域识别”一行 + 复选框“识别后显示校对窗（关闭则直接采用结果）”，改动立即写回 `settings.xml`。
+  - 关掉开关后走新的 `Plugin.StartDirectOcr` / `CompleteDirectOcr`：后台调用本地 OCR（上次语言不可用时自动回退“自动”再试一次），完成后直接采用结果——取字过程中就并入当前取字并提示；否则填入主题并进入连续圈注；识别不到文字时状态提示“未识别到文字”、保留原主题。全程不弹校对窗。
+- 测试：15 个测试程序 **934 项**通过。`HistoryPreferenceTests` 64 → 71 项（+7）：`ShowOcrReview=false` 往返、旧设置默认 `true`、新设置默认 `true`、设置页复选框默认勾选、取消勾选立即生效并写入 `GetSettings()`、应用设置静默恢复、默认设置重新勾选。
+- 真机验证（2026-11-27 17:16–17:19，独立编辑器副本，后台消息拖框触发 OCR，不动真实鼠标）：
+  - 1.8.4（改前，没有开关）：拖框 → 日志 `OcrReview ...`、`DIALOG=True`（弹“区域识别校对”窗）。
+  - 1.8.5 开关默认开：拖框 → 同样 `OcrReview ...`、`DIALOG=True`，原有行为不变。
+  - 1.8.5 关掉开关（`settings.xml` 里 `ShowOcrReview=false`，面板状态“请框选要识别的区域”）：拖框 → 日志 `OcrDirect ...`、`DIALOG=False`；空白区域 → `OcrDirect empty`（状态“未识别到文字”）；再框到 FCU 大字 → `OcrDirectPicked count=2 total=2 subject=ZIJ/FCU`，结果直接进入圈注，全程没有弹窗。
+  - 在真实面板设置页点复选框后，`settings.xml` 立即出现 `<ShowOcrReview>false</ShowOcrReview>`（17:17:22 那次量测）。
+  - 报告：`output\gui-test\host-ocr-review\{before,default,after}\*-report.txt`；校对窗截图 `before\before-ocr-dialog.png`、`default\default-ocr-dialog.png`。
+- 发布（1.8.5）：已推送到 GitHub `weixi11/ClickCircle-` 的 `main`（`version.txt` = `v1.8.5`）并打标签 `v1.8.5`；远端校验与提交号见下方“发布记录（1.8.5）”。
+- 未覆盖：关掉校对窗后无法手动修改识别文字（需要改时可再打开开关）；直接识别的语言回退只重试一次；没有做“只在识别失败时才弹校对窗”的第三种模式。
+## 早前（1.8.4）：取字提示回到鼠标旁、半透明、0.8 秒消失
 
 - 反馈（用户截图）：1.8.2 的取字提示被固定在屏幕工作区右下角，用户在图纸上取字时看不到（截图里提示贴在编辑器状态栏右下角），要求“还原回来、加点透明度、消失的速度快一点”。
 - 修改：
