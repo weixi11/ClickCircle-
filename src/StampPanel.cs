@@ -50,6 +50,11 @@ namespace ClickCircle
         private Button styleEditorButton;
         private Label updateStatusLabel;
         private CheckBox ocrReviewCheckBox;
+        private CheckBox historyCheckBox;
+        private TableLayoutPanel mainLayout;
+        private TableLayoutPanel historyLayout;
+        private bool showHistory = true;
+        private int historyHiddenHeight = -1;
         private PickHintForm pickHint;
         private string versionText = String.Empty;
 
@@ -72,6 +77,7 @@ namespace ClickCircle
         public event Action HistoryChanged;
         public event Action OcrLanguageChanged;
         public event Action OcrReviewChanged;
+        public event Action HistoryVisibilityChanged;
         public event Action CheckUpdateRequested;
         public event Action StyleEditRequested;
 
@@ -85,6 +91,9 @@ namespace ClickCircle
         /// <summary>最小客户区尺寸：标题、取字行、分隔符、尺寸、按钮、快捷键、状态行与历史表格都要露出来。</summary>
         public const int MinimumPanelWidth = 440;
         public const int MinimumPanelHeight = 380;
+
+        /// <summary>关掉主题历史后的紧凑客户区高度（只留主题、按钮、状态行）。</summary>
+        public const int CompactPanelHeight = 190;
 
         public StampPanel() : this(new PluginSettings())
         {
@@ -128,6 +137,7 @@ namespace ClickCircle
                 Dock = DockStyle.Fill, ColumnCount = 1, RowCount = 4, Margin = Padding.Empty,
                 BackColor = PageBack
             };
+            mainLayout = layout;
             layout.RowStyles.Add(new RowStyle(SizeType.Absolute, 56F));
             layout.RowStyles.Add(new RowStyle(SizeType.Absolute, 56F));
             layout.RowStyles.Add(new RowStyle(SizeType.Absolute, 44F));
@@ -232,7 +242,7 @@ namespace ClickCircle
             statusPanel.Controls.Add(statusRow);
             layout.Controls.Add(statusPanel, 0, 2);
 
-            TableLayoutPanel historyLayout = new TableLayoutPanel {
+            historyLayout = new TableLayoutPanel {
                 Dock = DockStyle.Fill, ColumnCount = 1, RowCount = 3, Margin = Padding.Empty,
                 BackColor = PageBack
             };
@@ -321,7 +331,7 @@ namespace ClickCircle
             Controls.Add(settingsPage);
 
             TableLayoutPanel layout = new TableLayoutPanel {
-                Dock = DockStyle.Fill, ColumnCount = 1, RowCount = 13, Margin = Padding.Empty,
+                Dock = DockStyle.Fill, ColumnCount = 1, RowCount = 14, Margin = Padding.Empty,
                 BackColor = PageBack
             };
             layout.RowStyles.Add(new RowStyle(SizeType.Absolute, 32F));
@@ -332,6 +342,7 @@ namespace ClickCircle
             layout.RowStyles.Add(new RowStyle(SizeType.Absolute, 28F));
             layout.RowStyles.Add(new RowStyle(SizeType.Absolute, 48F));
             layout.RowStyles.Add(new RowStyle(SizeType.Absolute, 44F));
+            layout.RowStyles.Add(new RowStyle(SizeType.Absolute, 40F));
             layout.RowStyles.Add(new RowStyle(SizeType.Absolute, 40F));
             layout.RowStyles.Add(new RowStyle(SizeType.Percent, 100F));
             layout.RowStyles.Add(new RowStyle(SizeType.Absolute, 14F));
@@ -496,6 +507,29 @@ namespace ClickCircle
             ocrRow.Controls.Add(ocrReviewCheckBox, 1, 0);
             layout.Controls.Add(ocrRow, 0, 8);
 
+            TableLayoutPanel historyRow = new TableLayoutPanel {
+                Dock = DockStyle.Fill, ColumnCount = 2, RowCount = 1, Margin = Padding.Empty,
+                BackColor = PageBack
+            };
+            historyRow.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, 72F));
+            historyRow.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100F));
+            Label historyLabel = MakeLabel("主题历史", "主题历史显示");
+            historyLabel.ForeColor = TextColor;
+            historyCheckBox = new CheckBox {
+                Name = "ShowHistory", AccessibleName = "显示主题历史",
+                Text = "显示主题历史（关闭后不记录、不显示）", Dock = DockStyle.Fill,
+                AutoSize = false, Checked = true, TabIndex = 12, ForeColor = TextColor,
+                TextAlign = ContentAlignment.MiddleLeft
+            };
+            historyCheckBox.CheckedChanged += delegate {
+                if (applyingSettings) return;
+                ApplyHistoryVisibility(historyCheckBox.Checked, true);
+                Raise(HistoryVisibilityChanged);
+            };
+            historyRow.Controls.Add(historyLabel, 0, 0);
+            historyRow.Controls.Add(historyCheckBox, 1, 0);
+            layout.Controls.Add(historyRow, 0, 9);
+
             TableLayoutPanel infoPanel = new TableLayoutPanel {
                 Dock = DockStyle.Fill, ColumnCount = 1, RowCount = 3, Margin = Padding.Empty,
                 BackColor = PageBack
@@ -504,7 +538,7 @@ namespace ClickCircle
             infoPanel.RowStyles.Add(new RowStyle(SizeType.AutoSize));
             infoPanel.RowStyles.Add(new RowStyle(SizeType.Percent, 100F));
             settingsHint = new Label {
-                Text = "取字与主题历史在主页操作；分隔符、圈注尺寸、快捷键、标注样式与区域识别校对窗修改后立即生效。",
+                Text = "取字与主题历史在主页操作；分隔符、圈注尺寸、快捷键、标注样式、主题历史与区域识别校对窗修改后立即生效。",
                 AutoSize = true, ForeColor = Muted, Font = new Font(Font.FontFamily, 8.5F),
                 Margin = new Padding(0, 8, 0, 0), MaximumSize = new Size(400, 0)
             };
@@ -515,7 +549,7 @@ namespace ClickCircle
             };
             infoPanel.Controls.Add(settingsHint, 0, 0);
             infoPanel.Controls.Add(updateStatusLabel, 0, 1);
-            layout.Controls.Add(infoPanel, 0, 9);
+            layout.Controls.Add(infoPanel, 0, 10);
 
             TableLayoutPanel versionRow = new TableLayoutPanel {
                 Dock = DockStyle.Fill, ColumnCount = 2, RowCount = 1, Margin = Padding.Empty,
@@ -534,15 +568,15 @@ namespace ClickCircle
             versionRow.Controls.Add(updateButton, 1, 0);
             layout.Controls.Add(new Panel {
                 Dock = DockStyle.Fill, BackColor = BorderColor, Margin = new Padding(0, 7, 0, 7)
-            }, 0, 10);
-            layout.Controls.Add(versionRow, 0, 11);
+            }, 0, 11);
+            layout.Controls.Add(versionRow, 0, 12);
 
             Label footer = new Label {
                 Text = "设置页仅调整标注参数", Dock = DockStyle.Fill,
                 TextAlign = ContentAlignment.MiddleLeft, ForeColor = Muted,
                 Font = new Font(Font.FontFamily, 8.5F)
             };
-            layout.Controls.Add(footer, 0, 12);
+            layout.Controls.Add(footer, 0, 13);
         }
 
         private void ShowSettings(bool show)
@@ -764,6 +798,7 @@ namespace ClickCircle
 
         public void RememberCurrentSubject()
         {
+            if (!showHistory) return;
             if (!history.Remember(Subject)) return;
             RefreshHistory();
             if (!applyingSettings) Raise(HistoryChanged);
@@ -922,6 +957,48 @@ namespace ClickCircle
             return null;
         }
 
+        /// <summary>是否显示主题历史（设置页开关；关掉后不显示也不记录）。</summary>
+        public bool ShowHistory
+        {
+            get { return showHistory; }
+        }
+
+        /// <summary>显示/隐藏主题历史：隐藏时把面板收成紧凑高度，打开时恢复原高度。</summary>
+        private void ApplyHistoryVisibility(bool show, bool restoreHeight, int requestedHeight = -1)
+        {
+            showHistory = show;
+            if (historyCheckBox != null && historyCheckBox.Checked != show)
+                historyCheckBox.Checked = show;
+            if (historyLayout != null)
+                historyLayout.Visible = show;
+            if (mainLayout != null && mainLayout.RowStyles.Count > 3)
+                mainLayout.RowStyles[3] = show
+                    ? new RowStyle(SizeType.Percent, 100F)
+                    : new RowStyle(SizeType.Absolute, 0F);
+            Size border = BorderSize();
+            if (show)
+            {
+                MinimumSize = new Size(MinimumPanelWidth + border.Width,
+                    MinimumPanelHeight + border.Height);
+                int target = historyHiddenHeight > 0
+                    ? historyHiddenHeight
+                    : (requestedHeight > 0 ? requestedHeight : DefaultPanelHeight);
+                if (restoreHeight && ClientSize.Height > CompactPanelHeight + 40)
+                    target = ClientSize.Height;
+                historyHiddenHeight = -1;
+                ClientSize = new Size(ClientSize.Width, Math.Max(MinimumPanelHeight, target));
+            }
+            else
+            {
+                int height = requestedHeight > 0 ? requestedHeight : ClientSize.Height;
+                if (height > CompactPanelHeight + 40)
+                    historyHiddenHeight = height;
+                MinimumSize = new Size(MinimumPanelWidth + border.Width,
+                    CompactPanelHeight + border.Height);
+                ClientSize = new Size(ClientSize.Width, CompactPanelHeight);
+            }
+            RefreshHistory();
+        }
         public void ApplySettings(PluginSettings settings)
         {
             if (settings == null)
@@ -940,10 +1017,12 @@ namespace ClickCircle
                 style.Normalize();
                 Style = style;
                 history = new SubjectHistory(settings.SubjectHistory);
-                RefreshHistory();
+                int requestedHeight = PluginSettings.ClampPanelHeight(settings.PanelHeight, DefaultPanelHeight);
                 ClientSize = new Size(
                     PluginSettings.ClampPanelWidth(settings.PanelWidth, DefaultPanelWidth),
-                    PluginSettings.ClampPanelHeight(settings.PanelHeight, DefaultPanelHeight));
+                    requestedHeight);
+                historyHiddenHeight = -1;
+                ApplyHistoryVisibility(settings.ShowHistory, false, requestedHeight);
             }
             finally
             {
@@ -966,6 +1045,7 @@ namespace ClickCircle
                 Separator = Separator,
                 OcrLanguage = OcrLanguage,
                 ShowOcrReview = ShowOcrReview,
+                ShowHistory = showHistory,
                 Style = (Style ?? AnnotStyle.Default()).Clone(),
                 SubjectHistory = history.Export(),
                 PanelWidth = ClientSize.Width,
@@ -1173,12 +1253,20 @@ namespace ClickCircle
         protected override void OnLoad(EventArgs e)
         {
             base.OnLoad(e);
-            // MinimumSize 用的是窗口尺寸，客户区必须留出 MinimumPanelWidth × MinimumPanelHeight：
-            // 否则拖到最小时主题历史表格只剩一条缝。
+            // MinimumSize 用的是窗口尺寸，客户区必须留出 MinimumPanelWidth × 最小客户区高度：
+            // 否则拖到最小时主题历史表格只剩一条缝；关掉主题历史时用紧凑高度。
+            Size border = BorderSize();
+            int minimumHeight = showHistory ? MinimumPanelHeight : CompactPanelHeight;
+            MinimumSize = new Size(MinimumPanelWidth + border.Width, minimumHeight + border.Height);
+        }
+
+        /// <summary>窗口边框与标题栏占用的尺寸（客户区之外的宽高）。</summary>
+        private Size BorderSize()
+        {
             Size border = new Size(Width - ClientSize.Width, Height - ClientSize.Height);
             if (border.Width <= 0 || border.Height <= 0)
                 border = new Size(16, 39);
-            MinimumSize = new Size(MinimumPanelWidth + border.Width, MinimumPanelHeight + border.Height);
+            return border;
         }
 
         private void DimensionValueChanged(object sender, EventArgs e)
@@ -1258,6 +1346,7 @@ namespace ClickCircle
             Separator = "/";
             OcrLanguage = String.Empty;
             ShowOcrReview = true;
+            ShowHistory = true;
             SubjectHistory = new List<SubjectHistoryEntry>();
             PanelWidth = StampPanel.DefaultPanelWidth;
             PanelHeight = StampPanel.DefaultPanelHeight;
@@ -1274,6 +1363,9 @@ namespace ClickCircle
 
         /// <summary>区域识别完成后是否弹出校对窗；默认开，旧 settings.xml 没有这一项也按开处理。</summary>
         public bool ShowOcrReview { get; set; }
+
+        /// <summary>是否显示主题历史；默认开，旧 settings.xml 没有这一项也按开处理。</summary>
+        public bool ShowHistory { get; set; }
         public List<SubjectHistoryEntry> SubjectHistory { get; set; }
 
         /// <summary>新标注自动套用的样式（字段/颜色/边框/测量参数）。</summary>
@@ -1334,6 +1426,7 @@ namespace ClickCircle
                     Separator = Separator ?? "/",
                     OcrLanguage = OcrService.NormalizeLanguagePreference(OcrLanguage),
                     ShowOcrReview = ShowOcrReview,
+                    ShowHistory = ShowHistory,
                     Style = NormalizeStyle(Style),
                     SubjectHistory = new SubjectHistory(SubjectHistory).Export(),
                     PanelWidth = ClampPanelWidth(PanelWidth, StampPanel.DefaultPanelWidth),

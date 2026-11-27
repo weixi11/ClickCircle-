@@ -90,7 +90,7 @@ internal static class HistoryPreferenceTests
         {
             PluginSettings settings = new PluginSettings {
                 WidthMm = 7, HeightMm = 8, Separator = " ", PickHotkey = "F9", OcrLanguage = "en-US",
-                ShowOcrReview = false,
+                ShowOcrReview = false, ShowHistory = false,
                 SubjectHistory = new List<SubjectHistoryEntry> {
                     new SubjectHistoryEntry { Subject = "LI-058/LI-058/LI-282", Pinned = true },
                     new SubjectHistoryEntry { Subject = "\u5e94\u6025\u7167\u660e  / B" }
@@ -102,6 +102,8 @@ internal static class HistoryPreferenceTests
                 loaded.SubjectHistory[0].Pinned, "Language and pinned themes survive disk reload.");
             Expect(!loaded.ShowOcrReview, "OCR review switch survives disk reload.");
             Expect(new PluginSettings().ShowOcrReview, "OCR review window is on by default.");
+            Expect(!loaded.ShowHistory, "History switch survives disk reload.");
+            Expect(new PluginSettings().ShowHistory, "History is on by default.");
             Expect(loaded.WidthMm == 7 && loaded.HeightMm == 8 && loaded.Separator == " " &&
                 loaded.PickHotkey == "F9", "New fields preserve existing settings.");
             Expect(loaded.SubjectHistory[1].Subject == "\u5e94\u6025\u7167\u660e  / B",
@@ -116,6 +118,7 @@ internal static class HistoryPreferenceTests
             Expect(loaded.OcrLanguage == "" && loaded.SubjectHistory.Count == 0 &&
                 loaded.WidthMm == 4 && loaded.Separator == "-", "Legacy settings get safe defaults.");
             Expect(loaded.ShowOcrReview, "Legacy settings show the OCR review window by default.");
+            Expect(loaded.ShowHistory, "Legacy settings show history by default.");
             loaded.OcrLanguage = "en-US\";bad";
             loaded.SubjectHistory = null;
             Expect(loaded.Save(path) && PluginSettings.Load(path).OcrLanguage == "" &&
@@ -205,6 +208,30 @@ internal static class HistoryPreferenceTests
                 "Loading settings restores the switch without emitting a save.");
             panel.ApplySettings(new PluginSettings());
             Expect(ocrReview.Checked && panel.ShowOcrReview, "Default settings turn the review window back on.");
+
+            int historyVisibilityChanges = 0;
+            panel.HistoryVisibilityChanged += delegate { historyVisibilityChanges++; };
+            CheckBox showHistory = (CheckBox)panel.Controls.Find("ShowHistory", true)[0];
+            Expect(showHistory.Checked && panel.ShowHistory, "History switch defaults to on.");
+            showHistory.Checked = false;
+            Expect(historyVisibilityChanges == 1 && !panel.ShowHistory,
+                "Turning history off takes effect and is saved.");
+            Expect(!grid.Visible, "History grid is hidden when the switch is off.");
+            Expect(panel.ClientSize.Height <= StampPanel.CompactPanelHeight + 2,
+                "Panel becomes compact when history is hidden, actual " + panel.ClientSize.Height);
+            panel.Subject = "OFF-1";
+            panel.RememberCurrentSubject();
+            Expect(panel.GetSettings().SubjectHistory.Count == 0,
+                "No new history entries are recorded while hidden.");
+            showHistory.Checked = true;
+            Expect(historyVisibilityChanges == 2 && panel.ShowHistory && grid.Visible,
+                "Turning history back on restores the grid.");
+            Expect(panel.ClientSize.Height >= StampPanel.MinimumPanelHeight,
+                "Panel height is restored when history comes back, actual " + panel.ClientSize.Height);
+            panel.Subject = "ON-1";
+            panel.RememberCurrentSubject();
+            Expect(panel.GetSettings().SubjectHistory.Count == 1,
+                "History records again after re-enabling.");
             panel.Hide();
         }
     }

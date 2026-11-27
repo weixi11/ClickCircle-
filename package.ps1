@@ -1,6 +1,6 @@
 [CmdletBinding()]
 param(
-    [string] $Version = '1.8.5',
+    [string] $Version = '1.8.6',
     [string] $OutputDirectory = (Join-Path $PSScriptRoot 'release'),
     [switch] $IncludeDrawingDemo
 )

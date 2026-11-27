@@ -229,7 +229,7 @@ namespace ClickCircle
         public string Name { get { return "取字连续圈注"; } }
         public string CopyrightInfo { get { return "ClickCircle 2026"; } }
         /// <summary>插件版本号，面板标题显示同一数值。</summary>
-        private const uint PluginVersionNumber = (1U << 16) | (8U << 8) | 5U;
+        private const uint PluginVersionNumber = (1U << 16) | (8U << 8) | 6U;
 
         public uint version { get { return PluginVersionNumber; } }
 
@@ -264,6 +264,7 @@ namespace ClickCircle
             Panel.HistoryChanged += SaveSettings;
             Panel.OcrLanguageChanged += SaveSettings;
             Panel.OcrReviewChanged += SaveSettings;
+            Panel.HistoryVisibilityChanged += SaveSettings;
             Panel.PanelSizeChanged += SaveSettings;
             Panel.HotkeyChanged += OnHotkeyChanged;
             Panel.HotkeyCaptureStarted += OnHotkeyCaptureStarted;
