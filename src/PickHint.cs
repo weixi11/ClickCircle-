@@ -5,28 +5,40 @@ using System.Windows.Forms;
 namespace ClickCircle
 {
     /// <summary>
-    /// 取字提示的落点：屏幕工作区右下角。提示固定待在角落，不跟着鼠标走，
-    /// 避免挡住图纸上正在点的下一个编号。
+    /// 取字提示的落点：鼠标右下方 18 / 22 像素（靠近屏幕边缘时自动翻到鼠标另一侧）。
     /// </summary>
     public static class PickHintPlacement
     {
-        /// <summary>提示与屏幕边缘留的距离。</summary>
-        public const int Margin = 12;
+        /// <summary>提示相对鼠标向右的偏移。</summary>
+        public const int OffsetX = 18;
 
-        public static Point BottomRight(Rectangle workingArea, Size size)
+        /// <summary>提示相对鼠标向下的偏移。</summary>
+        public const int OffsetY = 22;
+
+        public static Point NearCursor(Point cursor, Size size, Rectangle workingArea)
         {
-            int x = workingArea.Right - size.Width - Margin;
-            int y = workingArea.Bottom - size.Height - Margin;
+            int x = cursor.X + OffsetX;
+            int y = cursor.Y + OffsetY;
+            if (x + size.Width > workingArea.Right)
+                x = cursor.X - size.Width - OffsetX;
+            if (y + size.Height > workingArea.Bottom)
+                y = cursor.Y - size.Height - OffsetY;
             return new Point(Math.Max(workingArea.Left, x), Math.Max(workingArea.Top, y));
         }
     }
 
     /// <summary>
-    /// 取字成功时在屏幕右下角短暂显示的小提示。不抢焦点、不挡点击，1.4 秒后自动隐藏。
-    /// 位置固定在角落而不是鼠标旁：连续取字时鼠标旁的小窗会盖住下一次要点的编号。
+    /// 取字成功时在鼠标旁短暂显示的小提示：半透明、不抢焦点、不挡点击，0.8 秒后自动隐藏。
+    /// 放在鼠标旁是为了取字时一眼能看到取到了什么；半透明 + 很快消失，尽量不挡住图纸。
     /// </summary>
     internal sealed class PickHintForm : Form
     {
+        /// <summary>提示窗口的整体不透明度。</summary>
+        public const float HintOpacity = 0.88F;
+
+        /// <summary>提示自动消失的时间（毫秒）。</summary>
+        public const int VisibleMilliseconds = 800;
+
         private readonly Label label;
         private readonly Timer timer;
 
@@ -37,6 +49,7 @@ namespace ClickCircle
             ShowInTaskbar = false;
             TopMost = true;
             BackColor = Color.FromArgb(43, 47, 54);
+            Opacity = HintOpacity;
             Padding = new Padding(12, 7, 12, 7);
             AutoSize = true;
             AutoSizeMode = AutoSizeMode.GrowAndShrink;
@@ -48,7 +61,7 @@ namespace ClickCircle
                 Margin = Padding.Empty
             };
             Controls.Add(label);
-            timer = new Timer { Interval = 1400 };
+            timer = new Timer { Interval = VisibleMilliseconds };
             timer.Tick += delegate { timer.Stop(); Hide(); };
         }
 
@@ -66,7 +79,7 @@ namespace ClickCircle
             }
         }
 
-        /// <summary>在 anchorPoint 所在屏幕的右下角显示 text，已显示时只更新文字并重新计时。</summary>
+        /// <summary>在鼠标位置（anchorPoint）旁边显示 text，已显示时只更新文字并重新计时。</summary>
         public void ShowAt(string text, Point anchorPoint)
         {
             label.Text = text ?? String.Empty;
@@ -74,8 +87,8 @@ namespace ClickCircle
                 Show();
             else
                 PerformLayout();
-            Point location = PickHintPlacement.BottomRight(
-                Screen.FromPoint(anchorPoint).WorkingArea, Size);
+            Point location = PickHintPlacement.NearCursor(anchorPoint, Size,
+                Screen.FromPoint(anchorPoint).WorkingArea);
             Location = location;
             timer.Stop();
             timer.Start();

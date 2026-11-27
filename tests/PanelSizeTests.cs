@@ -148,20 +148,28 @@ internal static class PanelSizeTests
     private static void CheckPickHintPlacement()
     {
         Size hint = new Size(130, 24);
-        Point placed = PickHintPlacement.BottomRight(new Rectangle(0, 0, 1920, 1040), hint);
-        Expect(placed.X == 1920 - 130 - PickHintPlacement.Margin,
-            "取字提示贴屏幕右下角，实际 " + placed);
-        Expect(placed.Y == 1040 - 24 - PickHintPlacement.Margin,
-            "取字提示贴屏幕底边，实际 " + placed);
+        Point placed = PickHintPlacement.NearCursor(new Point(960, 540),
+            hint, new Rectangle(0, 0, 1920, 1040));
+        Expect(placed.X == 960 + PickHintPlacement.OffsetX &&
+            placed.Y == 540 + PickHintPlacement.OffsetY,
+            "取字提示显示在鼠标右下，实际 " + placed);
 
-        Point offset = PickHintPlacement.BottomRight(new Rectangle(100, 50, 800, 600), hint);
-        Expect(offset.X == 100 + 800 - 130 - PickHintPlacement.Margin &&
-            offset.Y == 50 + 600 - 24 - PickHintPlacement.Margin,
-            "副屏工作区按自身坐标落点，实际 " + offset);
+        Point flipped = PickHintPlacement.NearCursor(new Point(1850, 1030),
+            hint, new Rectangle(0, 0, 1920, 1040));
+        Expect(flipped.X == 1850 - 130 - PickHintPlacement.OffsetX &&
+            flipped.Y == 1030 - 24 - PickHintPlacement.OffsetY,
+            "靠近右/下边缘时翻到鼠标左上，实际 " + flipped);
 
-        Point clamped = PickHintPlacement.BottomRight(new Rectangle(0, 0, 60, 30), hint);
+        Point clamped = PickHintPlacement.NearCursor(new Point(-50, -60),
+            hint, new Rectangle(0, 0, 1920, 1040));
         Expect(clamped.X == 0 && clamped.Y == 0,
-            "工作区比提示还小时夹到左上角，实际 " + clamped);
+            "鼠标贴左上边缘时夹到工作区内，实际 " + clamped);
+
+        Point offset = PickHintPlacement.NearCursor(new Point(300, 200),
+            hint, new Rectangle(100, 50, 800, 600));
+        Expect(offset.X == 300 + PickHintPlacement.OffsetX &&
+            offset.Y == 200 + PickHintPlacement.OffsetY,
+            "副屏工作区按自身坐标落点，实际 " + offset);
     }
 
     private static void Collect<T>(Control root, ref T[] slots, ref int count) where T : Control
