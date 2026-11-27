@@ -17,6 +17,13 @@
   - 报告：`output\gui-test\host-ocr-review\{before,default,after}\*-report.txt`；校对窗截图 `before\before-ocr-dialog.png`、`default\default-ocr-dialog.png`。
 - 发布（1.8.5）：已推送到 GitHub `weixi11/ClickCircle-` 的 `main`（`version.txt` = `v1.8.5`）并打标签 `v1.8.5`；远端校验与提交号见下方“发布记录（1.8.5）”。
 - 未覆盖：关掉校对窗后无法手动修改识别文字（需要改时可再打开开关）；直接识别的语言回退只重试一次；没有做“只在识别失败时才弹校对窗”的第三种模式。
+### 发布记录（1.8.5）
+
+- 仓库：`https://github.com/weixi11/ClickCircle-`（公开），提交 `a78d35f`（“1.8.5: 设置页新增区域识别校对窗开关”），标签 `v1.8.5`。
+- 远端校验（2026-11-27 17:25）：`raw.githubusercontent.com/weixi11/ClickCircle-/main/version.txt` 返回 `v1.8.5`；`v1.8.5/dist/` 三个文件下载后 SHA-256 与本地 `dist` 完全一致：Core `03885C35B96C27387D8E251D4D9630D143B49FAB0BBEAD073C9DE5529FE1FBC5`（143360 字节）、pvp `385A4A03466AACFEA28E483B9671BA85A9F785295F7F54676CCD8A637925891B`（3072）、PDFXEdit.dll `2C8C6BA1F29654898AFBA5F7C566F9853E4411E6E05F4B963C93AC2751E208C1`（868864）。
+- 最终 dist 冒烟（2026-11-27 17:22，独立副本）：日志 `Version 1.8.5`，区域识别默认仍弹校对窗（`OcrReview` + `DIALOG=True`）。
+- 本机升级方式：编辑器里保存文档 → 设置 → 检查更新：从 1.8.2 直接升到 `v1.8.5`（包含 1.8.3 标注标签取字、1.8.4 取字提示、1.8.5 校对窗开关）；确认后 helper 自动关闭编辑器、备份、替换并重启，失败回滚。
+- 回滚：`output\gui-test\host-ocr-review\core-1.8.4\` 留着 1.8.4 的 Core/pvp，`output\gui-test\host-toast-184\core-1.8.2\` 留着 1.8.2，需要时退出编辑器后复制回 `Plugins.x64`。
 ## 早前（1.8.4）：取字提示回到鼠标旁、半透明、0.8 秒消失
 
 - 反馈（用户截图）：1.8.2 的取字提示被固定在屏幕工作区右下角，用户在图纸上取字时看不到（截图里提示贴在编辑器状态栏右下角），要求“还原回来、加点透明度、消失的速度快一点”。
