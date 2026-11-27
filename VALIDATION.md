@@ -16,6 +16,12 @@
 - 发布（1.8.4）：已推送到 GitHub `weixi11/ClickCircle-` 的 `main`（`version.txt` = `v1.8.4`）并打标签 `v1.8.4`；远端校验与提交号见下方“发布记录（1.8.4）”。
 - 未覆盖：提示文字过长时仍按 44 字截断；“半透明”用的是窗口整体 Opacity（不改变文字颜色）；未做淡出动画。
 
+### 发布记录（1.8.4）
+
+- 仓库：`https://github.com/weixi11/ClickCircle-`（公开），提交 `6319734`（“1.8.4: 取字提示回到鼠标旁、半透明、0.8 秒消失”），标签 `v1.8.4`。
+- 远端校验（2026-11-27 16:44）：`raw.githubusercontent.com/weixi11/ClickCircle-/main/version.txt` 返回 `v1.8.4`；`v1.8.4/dist/` 三个文件下载后 SHA-256 与本地 `dist` 完全一致：Core `74194B5EBF9AA2C7894DA143B86034A65EAF2EF03C0EC75CB7AA4F9B2C81B4BB`（140288 字节）、pvp `6577E51DF9BE85FFE7D0580E0FEF77A6410A72F959B1A1EFE38C0FF41CD4D5F5`（3072）、PDFXEdit.dll `2C8C6BA1F29654898AFBA5F7C566F9853E4411E6E05F4B963C93AC2751E208C1`（868864）。
+- 本机升级方式：编辑器里保存文档 → 设置 → 检查更新：从 1.8.2 直接升到 `v1.8.4`（包含 1.8.3 标注标签取字修复与 1.8.4 取字提示改动）；确认后 helper 自动关闭编辑器、备份、替换并重启，失败回滚。升级后 `plugin.log` 应出现 `Version 1.8.4`。
+- 回滚：`output\gui-test\host-toast-184\core-1.8.2\` 留着 1.8.2 三文件中的 Core/pvp，`output\install-backup-1.8.1-20261125-155826` 留着 1.8.1，需要时退出编辑器后复制回 `Plugins.x64` 即可。
 ## 早前（1.8.3）：点击位置在测量标注/批注标签上也能取字
 
 - 现象（用户反馈，附截图）：图纸第 5 页上点击绿色尺寸标签（`300X200 EAD`、`400X200 EAD` 等）取不了字；面板处于取字状态，点了没有结果，也没提示取到什么。
