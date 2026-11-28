@@ -14,6 +14,12 @@
   - 报告：`output\gui-test\host-defaults-188\ocr\default-report.txt`、`...\settings\settings-report.txt`。
 - 发布（1.8.8）：已推送到 GitHub `weixi11/ClickCircle-` 的 `main`（`version.txt` = `v1.8.8`）并打标签 `v1.8.8`；远端校验与提交号见下方“发布记录（1.8.8）”。
 - 未覆盖：用户已有 `settings.xml` 里显式写过的开关值仍然优先（这次只改“没设置过”时的默认值）；默认关闭校对窗后想逐行改识别文字需要先去设置里打开。
+### 发布记录（1.8.8）
+
+- 仓库：`https://github.com/weixi11/ClickCircle-`（公开），提交 `a82391f`（“1.8.8: 区域识别校对窗与主题历史默认关闭”），标签 `v1.8.8`。
+- 远端校验（2026-11-28 09:27）：`raw.githubusercontent.com/weixi11/ClickCircle-/main/version.txt` 返回 `v1.8.8`；`v1.8.8/dist/` 三个文件下载后 SHA-256 与本地 `dist` 完全一致：Core `2BC35031942FFCB6A71738043A566132E2CAB76FB58310884ECA914281F4CE3D`（145920 字节）、pvp `5E2229C648482CA50B693A4296222B8CD0D0D5458A295C9A32E46F51023EAD39`（3072）、PDFXEdit.dll `2C8C6BA1F29654898AFBA5F7C566F9853E4411E6E05F4B963C93AC2751E208C1`（868864）。
+- 本机升级方式：用户当前 1.8.7：保存文档 → 设置 → 检查更新 → `v1.8.8`；升级后设置页两个开关默认不勾，行为与用户当前已关闭的状态一致。
+- 回滚：历史版本可用 `output\gui-test\host-history-settings-187\core-1.8.6\`（1.8.6）与 `output\gui-test\host-ocr-review\core-1.8.4\`（1.8.4）。
 ## 早前（1.8.7）：历史关掉后打开设置页不再被截断
 
 - 现象（用户截图，红箭头指向面板底部）：1.8.6 关掉“显示主题历史”后窗口收成 480 × 190，再点“设置”时设置页只露出“标注参数”就没了，下面的快捷键/标注样式/区域识别/主题历史/检查更新全被截断；用户反馈“有点问题，就直接把窗口缩回去了”。
