@@ -1372,8 +1372,8 @@ namespace ClickCircle
             PickHotkey = HotkeyBinding.Default.ToStorage();
             Separator = "/";
             OcrLanguage = String.Empty;
-            ShowOcrReview = true;
-            ShowHistory = true;
+            ShowOcrReview = false;
+            ShowHistory = false;
             SubjectHistory = new List<SubjectHistoryEntry>();
             PanelWidth = StampPanel.DefaultPanelWidth;
             PanelHeight = StampPanel.DefaultPanelHeight;

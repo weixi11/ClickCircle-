@@ -30,16 +30,23 @@ internal static class PanelSizeTests
                 "不显示最大化与最小化按钮");
             Expect(panel.ShowInTaskbar == false, "不进入任务栏");
             Expect(panel.ClientSize.Width == StampPanel.DefaultPanelWidth &&
-                panel.ClientSize.Height == StampPanel.DefaultPanelHeight,
-                "默认客户区为 480 x 566，实际 " + panel.ClientSize);
-            Expect(panel.MinimumSize.Width >= StampPanel.MinimumPanelWidth &&
-                panel.MinimumSize.Height >= StampPanel.MinimumPanelHeight,
-                "窗口最小尺寸不小于客户区下限，实际 " + panel.MinimumSize);
+                panel.ClientSize.Height == StampPanel.CompactPanelHeight,
+                "默认（历史关）客户区为 480 x 190，实际 " + panel.ClientSize);
+            Expect(panel.MinimumSize.Width >= StampPanel.MinimumPanelWidth,
+                "窗口最小宽度不小于客户区下限，实际 " + panel.MinimumSize);
             Expect(panel.Text == "取字连续圈注", "默认标题不带版本号");
             panel.SetVersion("9.8.7");
             Expect(panel.Text == "取字连续圈注 v9.8.7", "标题显示版本号，实际 " + panel.Text);
             panel.SetVersion("  ");
             Expect(panel.Text == "取字连续圈注 v9.8.7", "空版本号保持原标题");
+        }
+        using (StampPanel panel = new StampPanel(new PluginSettings { ShowHistory = true }))
+        {
+            Expect(panel.ClientSize.Width == StampPanel.DefaultPanelWidth &&
+                panel.ClientSize.Height == StampPanel.DefaultPanelHeight,
+                "打开历史时客户区为 480 x 566，实际 " + panel.ClientSize);
+            Expect(panel.MinimumSize.Height >= StampPanel.MinimumPanelHeight,
+                "打开历史时最小高度不小于 380，实际 " + panel.MinimumSize);
         }
         Expect(ClickCircle.Plugin.VersionText.Split('.').Length == 3,
             "插件版本文本为三段点分十进制，实际 " + ClickCircle.Plugin.VersionText);
@@ -49,11 +56,11 @@ internal static class PanelSizeTests
     {
         using (StampPanel panel = new StampPanel())
         {
-            panel.ApplySettings(new PluginSettings { PanelWidth = 900, PanelHeight = 800 });
+            panel.ApplySettings(new PluginSettings { PanelWidth = 900, PanelHeight = 800, ShowHistory = true });
             Expect(panel.ClientSize.Width == 900 && panel.ClientSize.Height == 800,
                 "按设置恢复客户区大小，实际 " + panel.ClientSize);
 
-            panel.ApplySettings(new PluginSettings { PanelWidth = 100, PanelHeight = 100 });
+            panel.ApplySettings(new PluginSettings { PanelWidth = 100, PanelHeight = 100, ShowHistory = true });
             Expect(panel.ClientSize.Width >= StampPanel.MinimumPanelWidth &&
                 panel.ClientSize.Height >= StampPanel.MinimumPanelHeight,
                 "过小的设置被撑到客户区下限，实际 " + panel.ClientSize);
@@ -62,6 +69,11 @@ internal static class PanelSizeTests
             Expect(panel.GetSettings().PanelWidth == 720 &&
                 panel.GetSettings().PanelHeight == 640,
                 "GetSettings 反映当前窗口大小");
+
+            panel.ApplySettings(new PluginSettings { PanelWidth = 900, PanelHeight = 800 });
+            Expect(panel.ClientSize.Width == 900 &&
+                panel.ClientSize.Height == StampPanel.CompactPanelHeight,
+                "历史关时按设置宽度打开但高度收成紧凑，实际 " + panel.ClientSize);
         }
     }
 
@@ -111,7 +123,7 @@ internal static class PanelSizeTests
 
     private static void CheckLayout()
     {
-        using (StampPanel panel = new StampPanel())
+        using (StampPanel panel = new StampPanel(new PluginSettings { ShowHistory = true }))
         {
             TextBox subject = (TextBox)panel.Controls.Find("Subject", true)[0];
             ComboBox separator = (ComboBox)panel.Controls.Find("Separator", true)[0];
