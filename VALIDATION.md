@@ -16,6 +16,12 @@
   - 设置页截图（新增“剪贴板”行）：`output\gui-test\host-autocopy-1811\settings\settings-settings.png`（480 × 566，未出现截断/滚动条）；报告：`...\before\before-report.txt`、`...\after\after-report.txt`。
 - 发布（1.8.11）：已推送到 GitHub `weixi11/ClickCircle-` 的 `main`（`version.txt` = `v1.8.11`）并打标签 `v1.8.11`；远端校验与提交号见下方“发布记录（1.8.11）”。
 - 未覆盖：剪贴板被独占时只返回失败、不自动重试（下一次取字会再复制）；校对窗点取消时不复制；复制的是完整主题，不是最后一次点击的单个片段。
+### 发布记录（1.8.11）
+
+- 仓库：`https://github.com/weixi11/ClickCircle-`（公开），提交 `ba9a6b5f8b0cc59679162d8db6a1a99a0887bd29`（“1.8.11: 取字后自动复制，带开关”），标签 `v1.8.11`。
+- 远端校验（2026-11-28 11:52）：`raw.githubusercontent.com/weixi11/ClickCircle-/main/version.txt` 返回 `v1.8.11`；`v1.8.11/dist/` 三个文件下载后 SHA-256 与本地 `dist` 一致（Core 150528 字节 `8295C5486D9AE178C4BCA3772523FF2F8F7C0BC124F351972F1A6121008D8467`、pvp `671C0C768611F65E640C3864D646409713D8D4BF3BCB4551CD5AF898856EE78F`、PDFXEdit.dll `2C8C6BA1F29654898AFBA5F7C566F9853E4411E6E05F4B963C93AC2751E208C1`），`allMatch=True`。
+- 本机升级方式：用户当前 1.8.7：保存文档 → 设置 → 检查更新 → `v1.8.11`（会一并带上 1.8.8 默认关闭、1.8.9 放置提示、1.8.10 锁定段数与 1.8.11 自动复制）。
+- 回滚：`output\gui-test\host-autocopy-1811\core-1.8.10\`（1.8.10）。
 ## 早前（1.8.10）：锁定前 N 段，重新取字时保持不变
 
 - 需求（用户两张截图）：一段图纸里同一配电回路要配很多不同设备，每次重新取字都从第一段开始太麻烦；希望“锁定两段，重新取字时锁定的两段不动，新取的字接在后面”。
