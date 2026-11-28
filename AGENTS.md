@@ -5,7 +5,7 @@
 
 本文件在 `F:\桌面1\PDFEditor\AGENTS.md` 和 `F:\桌面1\PDFEditor\CircleStampPlugin\AGENTS.md` 各一份，内容相同；以后修改请两边一起同步。
 
-最后更新：2026-11-27，插件版本 1.8.6。
+最后更新：2026-11-28，插件版本 1.8.7。
 
 ## 1. 项目是什么
 
@@ -13,7 +13,7 @@
 - 插件：**ClickCircle / 面板标题「取字连续圈注」**。在暖通/电气图纸上点文字取编号，按分隔符累积成主题，再在图上按固定尺寸连续放红色椭圆圈注；取不到原文时可框选走本地 OCR；不依赖网络（在线更新除外）。
 - 技术栈：C# **.NET Framework 4.x x64 + WinForms**，编译只用系统 `csc.exe` / `ilasm.exe`（不需要 Visual Studio，不注册 COM）；入口是 `tools\ClickCircle.Bootstrap.il` 汇编出的原生 `.pvp`，运行时反射加载 `ClickCircle.Core.dll`，互操作程序集是 `dist\PDFXEdit.dll`。
 - git 仓库根：`F:\桌面1\PDFEditor\CircleStampPlugin`，remote `https://github.com/weixi11/ClickCircle-.git`（公开，`main`）。用户升级走编辑器「设置 → 检查更新」，从 GitHub 标签分发。
-- 当前版本：**1.8.6**，已发布标签 `v1.8.6`。用户机 `Plugins.x64` 里实际装的可能是旧版，**以 `plugin.log` 的 `Version` 行为准**（`F:\桌面1\PDFEditor\Plugins.x64\ClickCircleData\plugin.log`）。
+- 当前版本：**1.8.7**，已发布标签 `v1.8.7`。用户机 `Plugins.x64` 里实际装的可能是旧版，**以 `plugin.log` 的 `Version` 行为准**（`F:\桌面1\PDFEditor\Plugins.x64\ClickCircleData\plugin.log`）。
 
 ## 2. 目录速览
 
@@ -28,7 +28,7 @@
 | `CircleStampPlugin\dist\` | 发行三件：`ClickCircle.pvp`、`ClickCircle.Core.dll`、`PDFXEdit.dll`（**提交进 git**，在线更新要从标签里下载） |
 | `CircleStampPlugin\release\` | `package.ps1` 产出的 zip（gitignore） |
 | `CircleStampPlugin\output\` | 验收证据、安装备份、`gui-test` 脚本与探针（gitignore） |
-| `CircleStampPlugin\output\gui-test\` | 后台真机验证脚本：`bg-host-test2.ps1`（右键/菜单）、`bg-host-drag.ps1`（拖动落圈）、`bg-host-toast184.ps1`（取字提示量测）、`bg-host-ocr-review.ps1`（校对窗开关 before/default/after）、`bg-host-history.ps1`（主题历史开关/紧凑高度量测）；`probe\` 里是一次性 SDK 探针；`ClickCircle_gui_fixture.pdf` 是测试 PDF |
+| `CircleStampPlugin\output\gui-test\` | 后台真机验证脚本：`bg-host-test2.ps1`（右键/菜单）、`bg-host-drag.ps1`（拖动落圈）、`bg-host-toast184.ps1`（取字提示量测）、`bg-host-ocr-review.ps1`（校对窗开关 before/default/after）、`bg-host-history.ps1`（主题历史开关、历史关着时设置页高度与回缩量测）；`probe\` 里是一次性 SDK 探针；`ClickCircle_gui_fixture.pdf` 是测试 PDF |
 | `CircleStampPlugin\output\install-backup-*` | 历次装机前备份（三件 + settings + log） |
 
 ## 3. 用户可见行为（速查）
@@ -37,7 +37,7 @@
 - **取字来源优先级**：页面文字层 → AutoCAD SHX 专用批注 → **标注标签**（绿色尺寸标签这类，见 `AnnotationLabel.cs`：读标注 `/Contents`，反斜杠分行、**反序**、去掉末尾测量值行，点击命中按到折线的距离取最近且 < 8pt）→ 框选无原文自动进 OCR。
 - **取字提示**（用户明确要求，别改回去）：显示在**鼠标右下 18/22px**（屏幕边缘自动翻到另一侧）、**半透明 88%**、**0.8 秒**消失；不抢焦点、不挡点击。
 - **连续圈注**：每次左键在松开处（即使按下后拖动过）放一个椭圆；默认纸面 1.5×1.2 mm（面板可改）；新椭圆保持选中，属性面板显示主题/颜色/尺寸/不透明度。**右键完成本次标注**：吞掉编辑器页面右键菜单，约 0.3 秒后把工具交回编辑器。`Esc` 暂停/放弃。
-- **主题历史**：最近 50 条、可固定 50 条；右键完成取字、成功放圈或确认 OCR 结果时记入。设置页“主题历史”开关关掉后：历史区隐藏、面板客户区收成 480×190、不再记录新主题；重新打开恢复原高度并继续记录。
+- **主题历史**：最近 50 条、可固定 50 条；右键完成取字、成功放圈或确认 OCR 结果时记入。设置页“主题历史”开关关掉后：历史区隐藏、面板客户区收成 480×190、不再记录新主题；重新打开恢复原高度并继续记录；历史关着时打开设置页会先临时撑回原高度，点“返回主页面”后再收紧凑。
 - **其他**：分隔符可改并即时重组、面板可缩放、设置页有尺寸/快捷键/样式自动套用/检查更新/区域识别校对窗开关；区域 OCR 默认弹校对窗，设置里关掉后后台识别完直接把结果并入取字或圈注（不弹窗），日志 `OcrDirect`/`OcrDirectPicked`（本地 Windows.Media.Ocr，不外传）。
 - 标注本体是编辑器标准 `/Circle` 椭圆，Subject=主题，填充 RGB 239/83/80、边框 211/47/47 0.2pt、不透明度 60%。
 
@@ -68,10 +68,10 @@ $ilasm="$env:WINDIR\Microsoft.NET\Framework64\v4.0.30319\ilasm.exe"
 & $ilasm /nologo /dll /x64 "/output:$build\ClickCircle.pvp" "$proj\tools\ClickCircle.Bootstrap.il"
 ```
 
-- **测试程序**（15 个）：引用 `$build\ClickCircle.Core.dll` + `$dist\PDFXEdit.dll` + WinForms/Drawing/Xml，`HotkeyServiceTests` 额外带 `src\HotkeyService.cs`。当前全过：**945 项** = TextPicker 34、HotkeyBinding 92、HotkeyPanel 35、HotkeyService 145、RegionPicker 71、SeparatorPanel 111、ShxText 91、OCR 142、HistoryPreference 82、Cursor 8、RightClick 21、LeftRelease 10、PanelSize 33、Update 31、AnnotStyle 39。
+- **测试程序**（15 个）：引用 `$build\ClickCircle.Core.dll` + `$dist\PDFXEdit.dll` + WinForms/Drawing/Xml，`HotkeyServiceTests` 额外带 `src\HotkeyService.cs`。当前全过：**948 项** = TextPicker 34、HotkeyBinding 92、HotkeyPanel 35、HotkeyService 145、RegionPicker 71、SeparatorPanel 111、ShxText 91、OCR 142、HistoryPreference 85、Cursor 8、RightClick 21、LeftRelease 10、PanelSize 33、Update 31、AnnotStyle 39。
 - 构建产物复制进 `dist` 后提交；`release\ClickCircle-<版本>-x64.zip` 用 `package.ps1` 生成（同名存在会拒绝，先删旧包）。
 - **执行策略**禁止直接跑 `.ps1`，用绝对路径：
-  `& powershell.exe -NoProfile -ExecutionPolicy Bypass -Command "& '<绝对路径>\package.ps1' -Version '1.8.6'"`
+  `& powershell.exe -NoProfile -ExecutionPolicy Bypass -Command "& '<绝对路径>\package.ps1' -Version '1.8.7'"`
 - `ShxHostTests.cs`、`OcrHostTests.cs` 是装进编辑器的只读 SDK 验收，不是上面 15 个之一，另有 `tests\run-*-host-tests.ps1`。
 
 ## 6. 真机验证（不要碰用户编辑器）
@@ -84,7 +84,7 @@ $ilasm="$env:WINDIR\Microsoft.NET\Framework64\v4.0.30319\ilasm.exe"
 4. 窗口用 `SW_SHOWNOACTIVATE (4)` 显示，输入全部用 `PostMessage`/`SendMessage`（`WM_LBUTTONDOWN/UP`、`WM_MOUSEMOVE`、`WM_RBUTTONDOWN/UP`）；QAB 按钮用 UIAutomation `InvokePattern`；面板控件用子窗口 `WM_SETTEXT (0x000C)` + `BM_CLICK (0x00F5)`；
 5. 结果看 `plugin.log` 关键行 + 新窗口 diff；验完结束副本进程并删掉副本 `Plugins.x64` 里的插件三件。
 
-现成脚本（`output\gui-test\`）可直接改参数复用：`bg-host-test2.ps1`（右键完成不弹菜单）、`bg-host-drag.ps1`（圈注拖动落圈）、`bg-host-toast184.ps1`（提示位置/透明度/时长；before 装旧 Core、after 装新 Core 各跑一次）、`bg-host-ocr-review.ps1`（区域识别校对窗开关；settings.xml 预写 ShowOcrReview=false 验直采路径）、`bg-host-history.ps1`（主题历史开关；settings.xml 预写 ShowHistory=false 验紧凑高度）、`probe\PickProbe.cs`（标注标签取字探针，编译成插件装进副本）。需要直接查 SDK 文字层/标注时参考 `probe\TextProbe.cs`；渲染真值图可用 `OcrRegionRenderer.Render`。
+现成脚本（`output\gui-test\`）可直接改参数复用：`bg-host-test2.ps1`（右键完成不弹菜单）、`bg-host-drag.ps1`（圈注拖动落圈）、`bg-host-toast184.ps1`（提示位置/透明度/时长；before 装旧 Core、after 装新 Core 各跑一次）、`bg-host-ocr-review.ps1`（区域识别校对窗开关；settings.xml 预写 ShowOcrReview=false 验直采路径）、`bg-host-history.ps1`（主题历史开关；settings.xml 预写 ShowHistory=false 验紧凑高度；`-Stage settings-*` 打开设置页量测高度）、`probe\PickProbe.cs`（标注标签取字探针，编译成插件装进副本）。需要直接查 SDK 文字层/标注时参考 `probe\TextProbe.cs`；渲染真值图可用 `OcrRegionRenderer.Render`。
 
 ## 7. 发布流程（GitHub 在线更新是唯一分发渠道）
 
@@ -119,7 +119,7 @@ $git="$env:TEMP\cc-git\cmd\git.exe"; $repo='F:\桌面1\PDFEditor\CircleStampPlug
 - 圈注状态左键按下后拖动也要落圈，取字状态拖动才是框选：逻辑在 `LeftReleaseRouting.cs`，别混用。
 - WinForms 控件在 UIA 里常只暴露成 Pane，面板控件要用子窗口消息驱动。
 - 日志关键字见 README“诊断”一节：`Version`、`Picking doc=`、`Picked`、`BoxPicked`、`Picking finished`、`Stamping finished`、`Circle`、`Update ...`。
-- 主题历史开关：`PluginSettings.ShowHistory`（默认 true）；关掉后 `RememberCurrentSubject` 直接返回、面板收成 `CompactPanelHeight=190`，`OnLoad` 的最小高度必须按 `showHistory` 计算，否则启动会被顶回 380。
+- 主题历史开关：`PluginSettings.ShowHistory`（默认 true）；关掉后 `RememberCurrentSubject` 直接返回、面板收成 `CompactPanelHeight=190`，`OnLoad` 的最小高度必须按 `showHistory` 计算，否则启动会被顶回 380；`ShowSettings(true)` 必须先给紧凑面板撑回原高度，否则 480×190 的窗口装不下设置页（1.8.6 的 bug，1.8.7 修）。
 - 区域识别校对窗开关：`PluginSettings.ShowOcrReview`（默认 true，旧 settings.xml 缺节点按 true）；关掉后 `QueueOcr` 走 `StartDirectOcr`/`CompleteDirectOcr`，日志 `OcrDirect ...` / `OcrDirect empty` / `OcrDirectPicked count=... subject=...`。
 - 工作目录 `F:\桌面1\PDFEditor` ≠ git 根 `...\CircleStampPlugin`，git 命令加 `-C` 或先 `cd`。
 - 中文路径/编码/执行策略/智能引号四个坑见 §4 第 7 条，踩过一次就照做。
@@ -129,4 +129,4 @@ $git="$env:TEMP\cc-git\cmd\git.exe"; $repo='F:\桌面1\PDFEditor\CircleStampPlug
 1. **先看现状**：`plugin.log` 最后几行（当前版本、模式、错误）、`git -C <repo> status --short`、`git log --oneline -3`；别急着重编。
 2. **用户报 bug**：用副本 + 日志复现（留下改前证据）→ 定位（优先纯逻辑 helper 便于写测试）→ 改 → 15 测试全过 → 副本验证改后行为（量测/截图/日志）→ 发布 → 汇报“根因 + 改法 + 数据”。
 3. **用户要新功能/改 UI**：先看 README 功能表和 src 表找落点；GUI 行为改动尽量给 before/after 量测（位置、时长、透明度、窗口数等），用户很看重这个。
-4. **发布检查单**：版本三处 → README/VALIDATION → `dist` 已更新（新 Core 字节数/hash 变了）→ 15 程序 945 项全过 → 副本真机验证 → commit+tag+push+远端校验 → 第二次提交记录 → `package.ps1` → 告诉用户怎么在线升级。
+4. **发布检查单**：版本三处 → README/VALIDATION → `dist` 已更新（新 Core 字节数/hash 变了）→ 15 程序 948 项全过 → 副本真机验证 → commit+tag+push+远端校验 → 第二次提交记录 → `package.ps1` → 告诉用户怎么在线升级。
