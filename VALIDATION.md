@@ -18,6 +18,12 @@
   - 面板截图（含“锁定段数”行）：`output\gui-test\host-lock-1810\panel\default-panel.png`；报告：`...\before3\before3-report.txt`、`...\after3\after3-report.txt`。
 - 发布（1.8.10）：已推送到 GitHub `weixi11/ClickCircle-` 的 `main`（`version.txt` = `v1.8.10`）并打标签 `v1.8.10`；远端校验与提交号见下方“发布记录（1.8.10）”。
 - 未覆盖：锁定只作用于“取字片段”，手动改主题文字不会自动跟随锁定；锁定内容变化不会回写已有椭圆的 Subject。
+### 发布记录（1.8.10）
+
+- 仓库：`https://github.com/weixi11/ClickCircle-`（公开），提交 `122e034`（“1.8.10: 锁定前 N 段，重新取字时保持不变”），标签 `v1.8.10`。
+- 远端校验（2026-11-28 10:30）：`raw.githubusercontent.com/weixi11/ClickCircle-/main/version.txt` 返回 `v1.8.10`；`v1.8.10/dist/` 三个文件下载后 SHA-256 与本地 `dist` 完全一致：Core `D9550B6F…`（148992 字节，完整值见本地 dist 校验输出）、pvp 与 PDFXEdit.dll 同步一致。
+- 本机升级方式：用户当前 1.8.7（或 1.8.9）：保存文档 → 设置 → 检查更新 → `v1.8.10`；升级后主页会多出“锁定段数”一行。
+- 回滚：`output\gui-test\host-lock-1810\core-1.8.9\`（1.8.9）。
 ## 早前（1.8.9）：放置圈注时也在鼠标旁显示提示
 
 - 需求（用户截图：连续圈注里刚放下一个椭圆）：放置也跟取文字一样有提示。
