@@ -106,10 +106,13 @@ internal static class HistoryPreferenceTests
             Expect(!new PluginSettings().ShowHistory, "History is off by default.");
             Expect(loaded.LockedSegments == 0 && loaded.LockedFragments.Count == 0,
                 "Locked segments default to empty.");
+            Expect(!loaded.AutoCopyPicked && !new PluginSettings().AutoCopyPicked,
+                "Auto copy is off by default.");
             Expect(loaded.WidthMm == 7 && loaded.HeightMm == 8 && loaded.Separator == " " &&
                 loaded.PickHotkey == "F9", "New fields preserve existing settings.");
             Expect(loaded.SubjectHistory[1].Subject == "\u5e94\u6025\u7167\u660e  / B",
                 "Unicode and internal spaces survive serialization.");
+            settings.AutoCopyPicked = true;
             settings.LockedSegments = 2;
             settings.LockedFragments = new List<string> { "V2K-12", "0-10V" };
             settings.OcrLanguage = "";
@@ -119,6 +122,7 @@ internal static class HistoryPreferenceTests
             loaded = PluginSettings.Load(path);
             Expect(loaded.LockedSegments == 2 && loaded.LockedFragments.Count == 2 &&
                 loaded.LockedFragments[1] == "0-10V", "Locked segments survive disk reload.");
+            Expect(loaded.AutoCopyPicked, "Auto copy switch survives disk reload.");
             Expect(Directory.GetFiles(directory, "*.tmp").Length == 0, "Successful save leaves no temp file.");
             File.WriteAllText(path, "<CircleStampSettings><WidthMm>4</WidthMm><Separator>-</Separator></CircleStampSettings>");
             loaded = PluginSettings.Load(path);

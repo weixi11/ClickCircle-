@@ -51,6 +51,7 @@ namespace ClickCircle
         private Label updateStatusLabel;
         private CheckBox ocrReviewCheckBox;
         private CheckBox historyCheckBox;
+        private CheckBox autoCopyCheckBox;
         private NumericUpDown lockInput;
         private List<string> lockedFragments = new List<string>();
         private TableLayoutPanel mainLayout;
@@ -81,6 +82,7 @@ namespace ClickCircle
         public event Action OcrReviewChanged;
         public event Action HistoryVisibilityChanged;
         public event Action LockedSegmentsChanged;
+        public event Action AutoCopyChanged;
         public event Action CheckUpdateRequested;
         public event Action StyleEditRequested;
 
@@ -363,7 +365,7 @@ namespace ClickCircle
             Controls.Add(settingsPage);
 
             TableLayoutPanel layout = new TableLayoutPanel {
-                Dock = DockStyle.Fill, ColumnCount = 1, RowCount = 14, Margin = Padding.Empty,
+                Dock = DockStyle.Fill, ColumnCount = 1, RowCount = 15, Margin = Padding.Empty,
                 BackColor = PageBack
             };
             layout.RowStyles.Add(new RowStyle(SizeType.Absolute, 32F));
@@ -374,6 +376,7 @@ namespace ClickCircle
             layout.RowStyles.Add(new RowStyle(SizeType.Absolute, 28F));
             layout.RowStyles.Add(new RowStyle(SizeType.Absolute, 48F));
             layout.RowStyles.Add(new RowStyle(SizeType.Absolute, 44F));
+            layout.RowStyles.Add(new RowStyle(SizeType.Absolute, 40F));
             layout.RowStyles.Add(new RowStyle(SizeType.Absolute, 40F));
             layout.RowStyles.Add(new RowStyle(SizeType.Absolute, 40F));
             layout.RowStyles.Add(new RowStyle(SizeType.Percent, 100F));
@@ -562,6 +565,26 @@ namespace ClickCircle
             historyRow.Controls.Add(historyCheckBox, 1, 0);
             layout.Controls.Add(historyRow, 0, 9);
 
+            TableLayoutPanel copyRow = new TableLayoutPanel {
+                Dock = DockStyle.Fill, ColumnCount = 2, RowCount = 1, Margin = Padding.Empty,
+                BackColor = PageBack
+            };
+            copyRow.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, 72F));
+            copyRow.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100F));
+            Label copyLabel = MakeLabel("剪贴板", "剪贴板");
+            copyLabel.ForeColor = TextColor;
+            autoCopyCheckBox = new CheckBox {
+                Name = "AutoCopyPicked", AccessibleName = "取字后自动复制",
+                Text = "取字后自动复制主题到剪贴板", Dock = DockStyle.Fill,
+                AutoSize = false, Checked = false, TabIndex = 13, ForeColor = TextColor,
+                TextAlign = ContentAlignment.MiddleLeft
+            };
+            autoCopyCheckBox.CheckedChanged += delegate {
+                if (!applyingSettings) Raise(AutoCopyChanged);
+            };
+            copyRow.Controls.Add(copyLabel, 0, 0);
+            copyRow.Controls.Add(autoCopyCheckBox, 1, 0);
+            layout.Controls.Add(copyRow, 0, 10);
             TableLayoutPanel infoPanel = new TableLayoutPanel {
                 Dock = DockStyle.Fill, ColumnCount = 1, RowCount = 3, Margin = Padding.Empty,
                 BackColor = PageBack
@@ -581,7 +604,7 @@ namespace ClickCircle
             };
             infoPanel.Controls.Add(settingsHint, 0, 0);
             infoPanel.Controls.Add(updateStatusLabel, 0, 1);
-            layout.Controls.Add(infoPanel, 0, 10);
+            layout.Controls.Add(infoPanel, 0, 11);
 
             TableLayoutPanel versionRow = new TableLayoutPanel {
                 Dock = DockStyle.Fill, ColumnCount = 2, RowCount = 1, Margin = Padding.Empty,
@@ -600,15 +623,15 @@ namespace ClickCircle
             versionRow.Controls.Add(updateButton, 1, 0);
             layout.Controls.Add(new Panel {
                 Dock = DockStyle.Fill, BackColor = BorderColor, Margin = new Padding(0, 7, 0, 7)
-            }, 0, 11);
-            layout.Controls.Add(versionRow, 0, 12);
+            }, 0, 12);
+            layout.Controls.Add(versionRow, 0, 13);
 
             Label footer = new Label {
                 Text = "设置页仅调整标注参数", Dock = DockStyle.Fill,
                 TextAlign = ContentAlignment.MiddleLeft, ForeColor = Muted,
                 Font = new Font(Font.FontFamily, 8.5F)
             };
-            layout.Controls.Add(footer, 0, 13);
+            layout.Controls.Add(footer, 0, 14);
         }
 
         private void ShowSettings(bool show)
@@ -1092,6 +1115,28 @@ namespace ClickCircle
             if (restartingPick)
                 Subject = String.Empty;
         }
+        /// <summary>取字成功后是否自动把当前主题复制到剪贴板（设置页开关，默认关）。</summary>
+        public bool AutoCopyPicked
+        {
+            get { return autoCopyCheckBox != null && autoCopyCheckBox.Checked; }
+        }
+
+        /// <summary>把当前主题复制到剪贴板；主题为空或剪贴板被占用时返回 false。</summary>
+        public bool CopySubjectToClipboard()
+        {
+            string text = Subject;
+            if (String.IsNullOrWhiteSpace(text))
+                return false;
+            try
+            {
+                Clipboard.SetText(text);
+                return true;
+            }
+            catch
+            {
+                return false;
+            }
+        }
         /// <summary>显示/隐藏主题历史：隐藏时把面板收成紧凑高度，打开时恢复原高度。</summary>
         private void ApplyHistoryVisibility(bool show, bool restoreHeight, int requestedHeight = -1)
         {
@@ -1147,6 +1192,8 @@ namespace ClickCircle
                 OcrLanguage = settings.OcrLanguage;
                 if (ocrReviewCheckBox != null)
                     ocrReviewCheckBox.Checked = settings.ShowOcrReview;
+                if (autoCopyCheckBox != null)
+                    autoCopyCheckBox.Checked = settings.AutoCopyPicked;
                 AnnotStyle style = (settings.Style ?? AnnotStyle.Default()).Clone();
                 style.Normalize();
                 Style = style;
@@ -1181,6 +1228,7 @@ namespace ClickCircle
                 OcrLanguage = OcrLanguage,
                 ShowOcrReview = ShowOcrReview,
                 ShowHistory = showHistory,
+                AutoCopyPicked = AutoCopyPicked,
                 LockedSegments = lockedFragments.Count,
                 LockedFragments = new List<string>(lockedFragments),
                 Style = (Style ?? AnnotStyle.Default()).Clone(),
@@ -1484,6 +1532,7 @@ namespace ClickCircle
             OcrLanguage = String.Empty;
             ShowOcrReview = false;
             ShowHistory = false;
+            AutoCopyPicked = false;
             LockedSegments = 0;
             LockedFragments = new List<string>();
             SubjectHistory = new List<SubjectHistoryEntry>();
@@ -1505,6 +1554,9 @@ namespace ClickCircle
 
         /// <summary>是否显示主题历史；默认开，旧 settings.xml 没有这一项也按开处理。</summary>
         public bool ShowHistory { get; set; }
+
+        /// <summary>取字成功后是否自动把当前主题复制到剪贴板；默认关。</summary>
+        public bool AutoCopyPicked { get; set; }
 
         /// <summary>锁定的段数：重新取字时这些片段保留。</summary>
         public int LockedSegments { get; set; }
@@ -1574,6 +1626,7 @@ namespace ClickCircle
                     OcrLanguage = OcrService.NormalizeLanguagePreference(OcrLanguage),
                     ShowOcrReview = ShowOcrReview,
                     ShowHistory = ShowHistory,
+                    AutoCopyPicked = AutoCopyPicked,
                     LockedSegments = LockedSegments,
                     LockedFragments = LockedFragments == null ? new List<string>() : new List<string>(LockedFragments),
                     Style = NormalizeStyle(Style),

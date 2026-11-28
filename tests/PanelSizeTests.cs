@@ -167,6 +167,22 @@ internal static class PanelSizeTests
         }
     }
 
+    private static void CheckAutoCopyControl()
+    {
+        using (StampPanel panel = new StampPanel())
+        {
+            CheckBox autoCopy = (CheckBox)panel.Controls.Find("AutoCopyPicked", true)[0];
+            Expect(autoCopy != null && !autoCopy.Checked && !panel.AutoCopyPicked,
+                "自动复制默认关闭");
+            autoCopy.Checked = true;
+            Expect(panel.AutoCopyPicked, "勾选后 AutoCopyPicked 为真");
+            panel.Subject = "V2K-12/0-10V";
+            Expect(panel.CopySubjectToClipboard() && Clipboard.GetText() == "V2K-12/0-10V",
+                "主题复制到剪贴板，实际 " + Clipboard.GetText());
+            panel.Subject = String.Empty;
+            Expect(!panel.CopySubjectToClipboard(), "空主题不写剪贴板");
+        }
+    }
     private static void CheckPickHintPlacement()
     {
         Size hint = new Size(130, 24);
@@ -232,6 +248,7 @@ internal static class PanelSizeTests
             CheckLayout();
             CheckPickHintPlacement();
             CheckPickHintText();
+            CheckAutoCopyControl();
             Console.WriteLine("PanelSize: " + checkedCases + " cases passed.");
             return 0;
         }

@@ -230,7 +230,7 @@ namespace ClickCircle
         public string Name { get { return "取字连续圈注"; } }
         public string CopyrightInfo { get { return "ClickCircle 2026"; } }
         /// <summary>插件版本号，面板标题显示同一数值。</summary>
-        private const uint PluginVersionNumber = (1U << 16) | (8U << 8) | 10U;
+        private const uint PluginVersionNumber = (1U << 16) | (8U << 8) | 11U;
 
         public uint version { get { return PluginVersionNumber; } }
 
@@ -267,6 +267,7 @@ namespace ClickCircle
             Panel.OcrReviewChanged += SaveSettings;
             Panel.HistoryVisibilityChanged += SaveSettings;
             Panel.LockedSegmentsChanged += SaveSettings;
+            Panel.AutoCopyChanged += SaveSettings;
             Panel.PanelSizeChanged += SaveSettings;
             Panel.HotkeyChanged += OnHotkeyChanged;
             Panel.HotkeyCaptureStarted += OnHotkeyCaptureStarted;
@@ -432,6 +433,16 @@ namespace ClickCircle
             if (mode == StampMode.Stamping) Panel.RememberCurrentSubject();
         }
 
+        /// <summary>设置页开着“取字后自动复制”时，把当前主题复制到剪贴板并记日志。</summary>
+        private void AutoCopySubject()
+        {
+            if (Panel == null || Panel.IsDisposed || !Panel.AutoCopyPicked)
+                return;
+            string subject = Panel.Subject;
+            bool copied = Panel.CopySubjectToClipboard();
+            Log("AutoCopy ok=" + copied + " len=" + subject.Length +
+                (copied ? " subject=" + subject : String.Empty));
+        }
         /// <summary>取字状态行：已取几段，并提示右键完成。</summary>
         private string PickingHint
         {
@@ -790,6 +801,7 @@ namespace ClickCircle
                         return;
                     }
                     Panel.AppendPickedFragments(new[] { text });
+                    AutoCopySubject();
                     SetMode(StampMode.Picking, PickingHint);
                     Panel.ShowPickHint(text, Panel.PickedFragmentCount);
                     Log("Picked " + text + " count=" + Panel.PickedFragmentCount);
@@ -835,6 +847,7 @@ namespace ClickCircle
                     return;
                 }
                 Panel.AppendPickedFragments(result.Fragments);
+                AutoCopySubject();
                 SetMode(StampMode.Picking, PickingHint);
                 Panel.ShowPickHint(String.Join(" / ", result.Fragments), Panel.PickedFragmentCount);
                 Log("BoxPicked count=" + result.Fragments.Length +
@@ -907,6 +920,7 @@ namespace ClickCircle
                             {
                                 // 取字过程中框选落到 OCR：识别结果并入本次取字，右键再完成。
                                 Panel.AppendPickedFragments(review.ConfirmedFragments);
+                                AutoCopySubject();
                                 SetMode(StampMode.Picking, PickingHint);
                                 Panel.ShowPickHint(String.Join(" / ", review.ConfirmedFragments),
                                     Panel.PickedFragmentCount);
@@ -914,6 +928,7 @@ namespace ClickCircle
                             else
                             {
                                 Panel.SetPickedFragments(review.ConfirmedFragments);
+                                AutoCopySubject();
                                 SetMode(StampMode.Stamping, null);
                             }
                             Log("OcrPicked count=" + review.ConfirmedFragments.Length +
@@ -1018,12 +1033,14 @@ namespace ClickCircle
             {
                 // 取字过程中框选落到 OCR：识别结果并入本次取字，右键再完成。
                 Panel.AppendPickedFragments(fragments);
+                AutoCopySubject();
                 SetMode(StampMode.Picking, PickingHint);
                 Panel.ShowPickHint(String.Join(" / ", fragments), Panel.PickedFragmentCount);
             }
             else
             {
                 Panel.SetPickedFragments(fragments);
+                AutoCopySubject();
                 SetMode(StampMode.Stamping, null);
             }
             Log("OcrDirectPicked count=" + fragments.Length +
