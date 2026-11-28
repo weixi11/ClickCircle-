@@ -16,6 +16,12 @@
   - 证据：`output\gui-test\host-stamp-hint-189\before\before-report.txt`、`after\after-report.txt`、`after\after-hint.png`。
 - 发布（1.8.9）：已推送到 GitHub `weixi11/ClickCircle-` 的 `main`（`version.txt` = `v1.8.9`）并打标签 `v1.8.9`；远端校验与提交号见下方“发布记录（1.8.9）”。
 - 未覆盖：提示正文仍按 44 字截断；`session` 计数从进入圈注模式开始（暂停/重新进入会重数），不是整个文档的圈注总数。
+### 发布记录（1.8.9）
+
+- 仓库：`https://github.com/weixi11/ClickCircle-`（公开），提交 `dc603ae`（“1.8.9: 放置圈注时也在鼠标旁显示提示”），标签 `v1.8.9`。
+- 远端校验（2026-11-28 10:10）：`raw.githubusercontent.com/weixi11/ClickCircle-/main/version.txt` 返回 `v1.8.9`；`v1.8.9/dist/` 三个文件下载后 SHA-256 与本地 `dist` 完全一致：Core `684D3CA2AFDF5BA2A28BA3F69139FAD61CB8160C63935869FC6ABA352169C4B6`（146432 字节）、pvp `0221CC326805B0B06AE8C33C0E57AA922A86712DC5D43E35203DC2E52A93DFFD`（3072）、PDFXEdit.dll `2C8C6BA1F29654898AFBA5F7C566F9853E4411E6E05F4B963C93AC2751E208C1`（868864）。
+- 本机升级方式：用户当前 1.8.7：保存文档 → 设置 → 检查更新 → `v1.8.9`（会一并带上 1.8.8 两个默认关闭的开关与 1.8.9 放置提示）。
+- 回滚：可用 `output\gui-test\host-stamp-hint-189\core-1.8.8\`（1.8.8）。
 ## 早前（1.8.8）：区域识别校对窗与主题历史改成默认关闭
 
 - 需求（用户截图：设置页里“识别后显示校对窗”“显示主题历史”两个复选框都没勾）：这俩改成默认关闭。
