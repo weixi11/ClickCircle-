@@ -27,6 +27,38 @@ namespace ClickCircle
         }
     }
 
+    /// <summary>取字/圈注提示的文字格式；纯函数便于测试。</summary>
+    public static class PickHintText
+    {
+        /// <summary>提示正文最多显示的字数，超出截断。</summary>
+        public const int MaxBodyLength = 44;
+
+        public static string ForPick(string fragment, int count)
+        {
+            string body = Trim(fragment);
+            if (body.Length == 0 && count <= 0)
+                return null;
+            return count > 0
+                ? "已取 " + count + " 段" + (body.Length > 0 ? " · " + body : String.Empty)
+                : body;
+        }
+
+        public static string ForStamp(string subject, int count)
+        {
+            string body = Trim(subject);
+            return count > 0
+                ? "已圈注 " + count + " 个" + (body.Length > 0 ? " · " + body : String.Empty)
+                : "已圈注" + (body.Length > 0 ? " · " + body : String.Empty);
+        }
+
+        private static string Trim(string value)
+        {
+            string body = (value ?? String.Empty).Trim();
+            if (body.Length > MaxBodyLength)
+                body = body.Substring(0, MaxBodyLength) + "…";
+            return body;
+        }
+    }
     /// <summary>
     /// 取字成功时在鼠标旁短暂显示的小提示：半透明、不抢焦点、不挡点击，0.8 秒后自动隐藏。
     /// 放在鼠标旁是为了取字时一眼能看到取到了什么；半透明 + 很快消失，尽量不挡住图纸。

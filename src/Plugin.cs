@@ -27,6 +27,7 @@ namespace ClickCircle
         private bool changingTool;
         private bool unloading;
         private int ocrGeneration;
+        private int stampCount;
         private bool updateCheckRunning;
         private DateTime toolRestoreAtUtc = DateTime.MinValue;
         private OcrReviewDialog ocrReview;
@@ -229,7 +230,7 @@ namespace ClickCircle
         public string Name { get { return "取字连续圈注"; } }
         public string CopyrightInfo { get { return "ClickCircle 2026"; } }
         /// <summary>插件版本号，面板标题显示同一数值。</summary>
-        private const uint PluginVersionNumber = (1U << 16) | (8U << 8) | 8U;
+        private const uint PluginVersionNumber = (1U << 16) | (8U << 8) | 9U;
 
         public uint version { get { return PluginVersionNumber; } }
 
@@ -720,6 +721,8 @@ namespace ClickCircle
 
         private void SetMode(StampMode next, string status)
         {
+            if (next == StampMode.Stamping && mode != StampMode.Stamping)
+                stampCount = 0;
             mode = next;
             if (Panel == null || Panel.IsDisposed) return;
             Panel.Enabled = next != StampMode.Reviewing;
@@ -797,10 +800,12 @@ namespace ClickCircle
                     Panel.WidthMm, Panel.HeightMm, subject, page.Rotation + document.PagesViewRotation);
                 Panel.RememberCurrentSubject();
                 bool selected = AnnotSelector.Keep(Instance, document, annotation);
+                ++stampCount;
+                Panel.ShowStampHint(subject, stampCount);
                 Log(String.Format(System.Globalization.CultureInfo.InvariantCulture,
-                    "Circle doc={0} page={1} x={2:F4} y={3:F4} subject={4} selected={5} index={6} count={7}",
+                    "Circle doc={0} page={1} x={2:F4} y={3:F4} subject={4} selected={5} index={6} count={7} session={8}",
                     document.ID, pageIndex, point.x, point.y, subject, selected,
-                    annotation.IndexOnPage, page.GetAnnotsCount()));
+                    annotation.IndexOnPage, page.GetAnnotsCount(), stampCount));
             }
             catch (Exception exception)
             {

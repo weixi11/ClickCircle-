@@ -715,17 +715,22 @@ namespace ClickCircle
             updateStatusLabel.ForeColor = error ? Color.FromArgb(208, 69, 63) : TextColor;
         }
 
-        /// <summary>取字成功时在屏幕右下角显示短暂提示，例如“已取 2 段 · LI-282”。</summary>
+        /// <summary>取字成功时在鼠标旁显示短暂提示，例如“已取 2 段 · LI-282”。</summary>
         public void ShowPickHint(string fragment, int count)
         {
-            string body = (fragment ?? String.Empty).Trim();
-            if (body.Length > 44)
-                body = body.Substring(0, 44) + "…";
-            if (body.Length == 0 && count <= 0)
+            ShowHint(PickHintText.ForPick(fragment, count));
+        }
+
+        /// <summary>放下圈注时在鼠标旁显示短暂提示，例如“已圈注 3 个 · LI-282”。</summary>
+        public void ShowStampHint(string subject, int count)
+        {
+            ShowHint(PickHintText.ForStamp(subject, count));
+        }
+
+        private void ShowHint(string text)
+        {
+            if (String.IsNullOrEmpty(text))
                 return;
-            string text = count > 0
-                ? "已取 " + count + " 段" + (body.Length > 0 ? " · " + body : String.Empty)
-                : body;
             if (pickHint == null || pickHint.IsDisposed)
                 pickHint = new PickHintForm();
             pickHint.ShowAt(text, Cursor.Position);

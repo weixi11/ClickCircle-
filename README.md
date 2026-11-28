@@ -1,11 +1,11 @@
-# PDF-XChange 取字连续圈注（ClickCircle 1.8.8）
+# PDF-XChange 取字连续圈注（ClickCircle 1.8.9）
 
 原生 `.pvp` 入口 + C# 工具，在便携版 PDF-XChange Editor 10.8.4 / 11.0.1 x64 中加载运行；使用编辑器标准的 `/Circle` 椭圆标注与自带撤销、保存流程。详细测试记录见 `VALIDATION.md`；新会话接手本项目先读 `AGENTS.md`（项目规则、构建/测试/发布/真机验证流程）。
 
 ## 功能
 
 - **取文字**：单击图纸上的编号（例如 `LI-282`）取样，这次点击不生成标注，主题写入面板并可手动修改。测量标注/文字批注的标签（例如图纸上绿色的 `300X200 EAD`、`400X200 EAD` 尺寸标签，这类文字不在页面文字层里）也能点到取到，按标注 Contents 还原成屏幕上看到的标签文字。取字状态会保持，可以继续单击取下一个编号，片段按面板“分隔符”累积拼成一个主题；取完按右键完成取字，进入连续圈注。取字过程中再按快捷键或再点“取文字”会清空已取片段和主题，重新从第一段开始。
-- **取字提示**：单击或框选取字成功后，鼠标右下方会弹出一个小提示，显示“已取 N 段 · 内容”，约 0.8 秒后自动消失；提示半透明（88% 不透明度），靠近屏幕边缘时自动翻到鼠标另一侧，不抢焦点、不挡鼠标点击。
+- **取字/放置提示**：单击或框选取字成功后，鼠标右下方会弹出一个小提示，显示“已取 N 段 · 内容”；连续圈注里每放下一个椭圆也会弹出“已圈注 N 个 · 主题”（N 为本次进入圈注模式后放的第几个）。提示约 0.8 秒后自动消失、半透明（88% 不透明度），靠近屏幕边缘时自动翻到鼠标另一侧，不抢焦点、不挡鼠标点击。
 - **框选取文字**：仍在“取字”状态时按住左键拖出一个矩形，松开后按视觉顺序取矩形内所有文字段：行从上到下、行内从左到右，用面板“分隔符”拼接成主题。框选结果同样并入当前取字、不结束取字，可继续单击或框选追加，右键完成。
 - **AutoCAD SHX 取字**：支持从作者标记为 `AutoCAD SHX Text` 的专用批注读取原文和位置；单击优先取原生文字，未命中再取 SHX。框选可混合原生文字和 SHX，继续使用同一套排序与分隔符；不同位置的重复编号保留，同位置完全相同的原生文字段优先保留，避免重复加入。
 - **区域 OCR 与校对**：点“区域识别”后拖框，或普通框选没有找到原文时，渲染框内原图识别；默认**不弹**校对窗，识别完直接把结果并入主题或圈注；需要逐行修改时在设置页打开“区域识别 → 识别后显示校对窗”。本地识别后可以逐行修改、增删文字片段，合并主题实时预览；点“确认并圈注”才把结果填入主题并进入连续圈注（取字过程中自动进入的识别会并入当前主题，右键再完成取字）。识别和校对本身不生成标注，取消保留原主题。
@@ -19,7 +19,7 @@
   - 样式：线条颜色、填充颜色（可开关）、边框宽度、不透明度、虚线边框；
   - 测量：比例尺（1 mm = X m）、小数位、千位分隔符。
   范围可选“只套用到测量标注（周长/面积/线）”或“所有新标注”。绘制方式不变——继续用编辑器自带的周长/面积/矩形/椭圆等工具画，插件在标注创建后自动套用样式，因此多点测量的原生交互完全保留。实现上监听文档的 `e.annots.inserted` 事件，对新增标注写入数据后立即生效，不依赖固定工具、也不需要改动绘制流程。样式默认关闭，关闭时行为与之前版本完全一致。
-- **版本号**：面板标题显示当前版本（例如“取字连续圈注 v1.8.8”）；启动时日志同时写入 `Version 1.8.8`，方便确认实际加载的版本。
+- **版本号**：面板标题显示当前版本（例如“取字连续圈注 v1.8.9”）；启动时日志同时写入 `Version 1.8.9`，方便确认实际加载的版本。
 - **面板布局**：主页只保留主题、四个操作按钮、状态条和主题历史；分隔符、圈注尺寸、快捷键和“检查更新”收进设置页（状态条右侧“设置”进入，左上角“返回主页面”退出）。状态条用圆点颜色区分暂停/取字/标注，快捷键、当前尺寸与分隔符在主页一眼可见。
 - **在线更新**：面板状态行右侧的“检查更新”按钮读取 GitHub 仓库 `main` 分支的 `version.txt`（不受 API 限流；读取失败才回退到 tags API），发现新版本时弹窗确认。确认后先检查所有文档是否已保存，再把三个发行文件下载到临时目录，交由一个独立批处理等待编辑器退出、备份旧文件、替换并在失败时回滚，最后自动重启编辑器。下载走公开的 `raw.githubusercontent.com`，不需要 GitHub 账号或令牌。检查结果（正在检查 / 已是最新 / 失败原因）显示在设置页底部的提示行，不占用主页状态行。
 - **面板可缩放**：拖窗口边缘即可改变大小，主题历史表格跟着长高变宽，放大后一次能看到更多主题；最小尺寸保证各行控件都露出来（客户区不小于 440 × 380；关掉主题历史后为 440 × 190）。大小在松手时记入 `settings.xml`，重开面板按上次大小恢复。
@@ -118,8 +118,8 @@ uninstall.cmd "D:\...\PDF Editor"  # 同上，显式指定编辑器目录
 ## 打包
 
 ```powershell
-.\package.ps1                     # 默认 1.8.8
-.\package.ps1 -Version 1.8.8      # 指定版本
+.\package.ps1                     # 默认 1.8.9
+.\package.ps1 -Version 1.8.9      # 指定版本
 ```
 
 按白名单打包三个发行文件、源码、脚本、说明、测试与样例，产出 `release\ClickCircle-<版本>-x64.zip`；同名包已存在时拒绝覆盖。可加 `-IncludeDrawingDemo` 把照明图演示 PDF 一起打进去。
@@ -136,7 +136,7 @@ python .\tests\verify_output.py .\output\ClickCircle_acceptance_result.pdf --exp
 
 SHX 回归样例为 `tests\ClickCircle_shx_selection.pdf`：4 种旋转，包含只有矢量轮廓的 SHX 编号、重复编号、带空格与斜杠的文字、原生文字、同位置双重表示与应忽略的普通批注。`create_shx_fixture.py` 需要 `fonttools`、`reportlab`、`pypdf` 与 Windows Arial 字体，均为测试依赖，插件不依赖 Python 或外部识别服务。
 
-`build.ps1 -RunTests` 运行 15 个测试程序共 955 项：TextPicker 34、HotkeyBinding 92、HotkeyPanel 35、HotkeyService 145、RegionPicker 71、SeparatorPanel 111、ShxText 91、OCR 142、HistoryPreference 89、Cursor 8、RightClick 21、LeftRelease 10、PanelSize 36、Update 31、AnnotStyle 39。还可在单独的编辑器副本中运行只读 SDK 验收：
+`build.ps1 -RunTests` 运行 15 个测试程序共 962 项：TextPicker 34、HotkeyBinding 92、HotkeyPanel 35、HotkeyService 145、RegionPicker 71、SeparatorPanel 111、ShxText 91、OCR 142、HistoryPreference 89、Cursor 8、RightClick 21、LeftRelease 10、PanelSize 43、Update 31、AnnotStyle 39。还可在单独的编辑器副本中运行只读 SDK 验收：
 
 ```powershell
 .\tests\run-shx-host-tests.ps1 -EditorDirectory 'C:\测试副本\PDF Editor' -DrawingPath 'C:\图纸.pdf'
@@ -160,7 +160,7 @@ OCR 的纯图片样例为 `tests\ClickCircle_ocr_selection.pdf`，四页分别�
 - `BoxPicked count=<N> total=<M> subject=<主题>`：框选取字并入当前主题，`N` 为本次框到几段，`M` 为累积总数。
 - `Picking finished count=<N> subject=<主题>`：右键完成取字，进入连续圈注。
 - `Stamping finished subject=<主题>`：右键完成本次标注，稍后（约 0.3 秒）把工具交回编辑器。
-- `Circle doc=<ID> page=<n> ... subject=<主题>`：放好一个椭圆。
+- `Circle doc=<ID> page=<n> ... subject=<主题> ... session=<N>`：放好一个椭圆，`N` 为本次进入连续圈注模式后放的第几个。
 - `OcrReview doc=<ID> page=<n> region=... rotation=...`：仅打开区域识别校对，尚未改主题或画圈。
 - `OcrPicked count=<N> subject=<主题>`：已明确确认校对结果并进入连续圈注。
 - `OcrDirect doc=<ID> page=<n> region=... rotation=...`：设置里关掉校对窗，区域识别在后台直接跑，不弹窗。

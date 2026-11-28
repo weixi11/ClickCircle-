@@ -195,6 +195,22 @@ internal static class PanelSizeTests
         }
     }
 
+    private static void CheckPickHintText()
+    {
+        Expect(PickHintText.ForPick("LI-282", 2) == "已取 2 段 · LI-282",
+            "取字提示带段数与内容，实际 " + PickHintText.ForPick("LI-282", 2));
+        Expect(PickHintText.ForPick("  LI-282  ", 0) == "LI-282",
+            "只有一段时只显示内容");
+        Expect(PickHintText.ForPick("", 0) == null, "空取字不弹提示");
+        string longBody = new string('字', 60);
+        string truncated = PickHintText.ForPick(longBody, 1);
+        Expect(truncated == "已取 1 段 · " + new string('字', PickHintText.MaxBodyLength) + "…",
+            "超长内容截断到 44 字，实际长度 " + truncated.Length);
+        Expect(PickHintText.ForStamp("V2J-08/0-10V/V-FU32a", 3) == "已圈注 3 个 · V2J-08/0-10V/V-FU32a",
+            "放置提示带个数与主题，实际 " + PickHintText.ForStamp("V2J-08/0-10V/V-FU32a", 3));
+        Expect(PickHintText.ForStamp("  ", 1) == "已圈注 1 个", "空主题只显示个数");
+        Expect(PickHintText.ForStamp("", 0) == "已圈注", "没有主题和个数时也有提示");
+    }
     [STAThread]
     public static int Main()
     {
@@ -205,6 +221,7 @@ internal static class PanelSizeTests
             CheckSettingsRoundTrip();
             CheckLayout();
             CheckPickHintPlacement();
+            CheckPickHintText();
             Console.WriteLine("PanelSize: " + checkedCases + " cases passed.");
             return 0;
         }
