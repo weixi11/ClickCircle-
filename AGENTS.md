@@ -5,7 +5,7 @@
 
 本文件在 `F:\桌面1\PDFEditor\AGENTS.md` 和 `F:\桌面1\PDFEditor\CircleStampPlugin\AGENTS.md` 各一份，内容相同；以后修改请两边一起同步。
 
-最后更新：2026-11-28，插件版本 1.8.11。
+最后更新：2026-11-28，插件版本 1.8.12。
 
 ## 1. 项目是什么
 
@@ -13,7 +13,7 @@
 - 插件：**ClickCircle / 面板标题「取字连续圈注」**。在暖通/电气图纸上点文字取编号，按分隔符累积成主题，再在图上按固定尺寸连续放红色椭圆圈注；取不到原文时可框选走本地 OCR；不依赖网络（在线更新除外）。
 - 技术栈：C# **.NET Framework 4.x x64 + WinForms**，编译只用系统 `csc.exe` / `ilasm.exe`（不需要 Visual Studio，不注册 COM）；入口是 `tools\ClickCircle.Bootstrap.il` 汇编出的原生 `.pvp`，运行时反射加载 `ClickCircle.Core.dll`，互操作程序集是 `dist\PDFXEdit.dll`。
 - git 仓库根：`F:\桌面1\PDFEditor\CircleStampPlugin`，remote `https://github.com/weixi11/ClickCircle-.git`（公开，`main`）。用户升级走编辑器「设置 → 检查更新」，从 GitHub 标签分发。
-- 当前版本：**1.8.11**，已发布标签 `v1.8.11`。用户机 `Plugins.x64` 里实际装的可能是旧版，**以 `plugin.log` 的 `Version` 行为准**（`F:\桌面1\PDFEditor\Plugins.x64\ClickCircleData\plugin.log`）。
+- 当前版本：**1.8.12**，已发布标签 `v1.8.12`。用户机 `Plugins.x64` 里实际装的可能是旧版，**以 `plugin.log` 的 `Version` 行为准**（`F:\桌面1\PDFEditor\Plugins.x64\ClickCircleData\plugin.log`）。
 
 ## 2. 目录速览
 
@@ -69,10 +69,10 @@ $ilasm="$env:WINDIR\Microsoft.NET\Framework64\v4.0.30319\ilasm.exe"
 & $ilasm /nologo /dll /x64 "/output:$build\ClickCircle.pvp" "$proj\tools\ClickCircle.Bootstrap.il"
 ```
 
-- **测试程序**（15 个）：引用 `$build\ClickCircle.Core.dll` + `$dist\PDFXEdit.dll` + WinForms/Drawing/Xml，`HotkeyServiceTests` 额外带 `src\HotkeyService.cs`。当前全过：**995 项** = TextPicker 34、HotkeyBinding 92、HotkeyPanel 35、HotkeyService 145、RegionPicker 71、SeparatorPanel 133、ShxText 91、OCR 142、HistoryPreference 93、Cursor 8、RightClick 21、LeftRelease 10、PanelSize 50、Update 31、AnnotStyle 39。
+- **测试程序**（15 个）：引用 `$build\ClickCircle.Core.dll` + `$dist\PDFXEdit.dll` + WinForms/Drawing/Xml，`HotkeyServiceTests` 额外带 `src\HotkeyService.cs`。当前全过：**996 项** = TextPicker 34、HotkeyBinding 92、HotkeyPanel 35、HotkeyService 145、RegionPicker 71、SeparatorPanel 133、ShxText 91、OCR 142、HistoryPreference 94、Cursor 8、RightClick 21、LeftRelease 10、PanelSize 50、Update 31、AnnotStyle 39。
 - 构建产物复制进 `dist` 后提交；`release\ClickCircle-<版本>-x64.zip` 用 `package.ps1` 生成（同名存在会拒绝，先删旧包）。
 - **执行策略**禁止直接跑 `.ps1`，用绝对路径：
-  `& powershell.exe -NoProfile -ExecutionPolicy Bypass -Command "& '<绝对路径>\package.ps1' -Version '1.8.11'"`
+  `& powershell.exe -NoProfile -ExecutionPolicy Bypass -Command "& '<绝对路径>\package.ps1' -Version '1.8.12'"`
 - `ShxHostTests.cs`、`OcrHostTests.cs` 是装进编辑器的只读 SDK 验收，不是上面 15 个之一，另有 `tests\run-*-host-tests.ps1`。
 
 ## 6. 真机验证（不要碰用户编辑器）
@@ -122,6 +122,7 @@ $git="$env:TEMP\cc-git\cmd\git.exe"; $repo='F:\桌面1\PDFEditor\CircleStampPlug
 - 日志关键字见 README“诊断”一节：`Version`、`Picking doc=`、`Picked`、`BoxPicked`、`Picking finished`、`Stamping finished`、`Circle ... session=`、`Update ...`。
 - 自动复制：`PluginSettings.AutoCopyPicked`（默认 false）；`Plugin.AutoCopySubject()` 在四条取字成功路径调用，`StampPanel.CopySubjectToClipboard()` 负责写剪贴板（空主题/被占用返回 false）。日志关键字 `AutoCopy ok=`。测这个功能时记得先保存再恢复用户的剪贴板内容。
 - 锁定段数：`PluginSettings.LockedSegments`/`LockedFragments`（默认 0/空，随 settings.xml 保存）；`StampPanel.BeginPickingRound(restarting)` 在每次进入取字时用锁定片段起步，`ApplyLockedSegments` 负责裁当前片段与夹输入框；主页多一行后默认紧凑高度为 230。
+- 主页行索引（1.8.12 回归教训）：主页现在是 5 行 = 主题(0)、按钮(1)、锁定段数(2)、状态行(3)、历史(4)。`ApplyHistoryVisibility` 必须操作 `RowStyles[4]`，改主页行顺序时要同步所有 RowStyles 索引，否则关历史会把状态行（含“设置”入口）高度置 0。
 - 主题历史开关：`PluginSettings.ShowHistory`（默认 **false**，旧 settings.xml 缺节点按 false）；关掉后 `RememberCurrentSubject` 直接返回、面板收成 `CompactPanelHeight=190`，`OnLoad` 的最小高度必须按 `showHistory` 计算，否则启动会被顶回 380；`ShowSettings(true)` 必须先给紧凑面板撑回原高度，否则 480×190 的窗口装不下设置页（1.8.6 的 bug，1.8.7 修）。
 - 区域识别校对窗开关：`PluginSettings.ShowOcrReview`（默认 **false**，旧 settings.xml 缺节点按 false；显式保存过的值优先）；关掉后 `QueueOcr` 走 `StartDirectOcr`/`CompleteDirectOcr`，日志 `OcrDirect ...` / `OcrDirect empty` / `OcrDirectPicked count=... subject=...`。
 - 工作目录 `F:\桌面1\PDFEditor` ≠ git 根 `...\CircleStampPlugin`，git 命令加 `-C` 或先 `cd`。
@@ -132,4 +133,4 @@ $git="$env:TEMP\cc-git\cmd\git.exe"; $repo='F:\桌面1\PDFEditor\CircleStampPlug
 1. **先看现状**：`plugin.log` 最后几行（当前版本、模式、错误）、`git -C <repo> status --short`、`git log --oneline -3`；别急着重编。
 2. **用户报 bug**：用副本 + 日志复现（留下改前证据）→ 定位（优先纯逻辑 helper 便于写测试）→ 改 → 15 测试全过 → 副本验证改后行为（量测/截图/日志）→ 发布 → 汇报“根因 + 改法 + 数据”。
 3. **用户要新功能/改 UI**：先看 README 功能表和 src 表找落点；GUI 行为改动尽量给 before/after 量测（位置、时长、透明度、窗口数等），用户很看重这个。
-4. **发布检查单**：版本三处 → README/VALIDATION → `dist` 已更新（新 Core 字节数/hash 变了）→ 15 程序 995 项全过 → 副本真机验证 → commit+tag+push+远端校验 → 第二次提交记录 → `package.ps1` → 告诉用户怎么在线升级。
+4. **发布检查单**：版本三处 → README/VALIDATION → `dist` 已更新（新 Core 字节数/hash 变了）→ 15 程序 996 项全过 → 副本真机验证 → commit+tag+push+远端校验 → 第二次提交记录 → `package.ps1` → 告诉用户怎么在线升级。
