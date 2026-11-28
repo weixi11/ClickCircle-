@@ -14,6 +14,12 @@
   - 报告：`...\before\default-report.txt`、`...\after\default-report.txt`。
 - 发布（1.8.12）：已推送到 GitHub `weixi11/ClickCircle-` 的 `main`（`version.txt` = `v1.8.12`）并打标签 `v1.8.12`；远端校验与提交号见下方“发布记录（1.8.12）”。
 - 未覆盖：设置页本身未改动；历史打开/关闭的尺寸行为与 1.8.10 一致。
+### 发布记录（1.8.12）
+
+- 仓库：`https://github.com/weixi11/ClickCircle-`（公开），提交 `4786e4b7fb2f624b065e0fb1f61d5c7d0a86b064`（“1.8.12: 历史关着时“设置”入口消失的回归修复”），标签 `v1.8.12`。
+- 远端校验（2026-11-28 11:59）：`raw.githubusercontent.com/weixi11/ClickCircle-/main/version.txt` 返回 `v1.8.12`；`v1.8.12/dist/` 三个文件下载后 SHA-256 与本地 `dist` 一致（Core 150528 字节 `D9C609ED0C095C7FDC4C7319F952A8D1A5B21A4B63A319F26F778C465EC76123`、pvp `63ABBFB5418405E3D09B824DB379C36D5B5A8843E816D9B93A28C3DA5CB0CA3E`、PDFXEdit.dll `2C8C6BA1F29654898AFBA5F7C566F9853E4411E6E05F4B963C93AC2751E208C1`），`allMatch=True`。
+- 本机升级方式：用户当前 1.8.10：保存文档 → 设置 → 检查更新 → `v1.8.12`；升级后历史关闭时底部状态行（含“设置”按钮）恢复显示。
+- 回滚：`output\gui-test\host-settings-missing-1812\core-1.8.11\`（1.8.11，有该回归）。
 ## 早前（1.8.11）：取字后自动复制，带开关
 
 - 需求：加一个取字自动复制的功能，带开关。
