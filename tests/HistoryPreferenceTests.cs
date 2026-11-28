@@ -104,14 +104,21 @@ internal static class HistoryPreferenceTests
             Expect(!new PluginSettings().ShowOcrReview, "OCR review window is off by default.");
             Expect(!loaded.ShowHistory, "History switch survives disk reload.");
             Expect(!new PluginSettings().ShowHistory, "History is off by default.");
+            Expect(loaded.LockedSegments == 0 && loaded.LockedFragments.Count == 0,
+                "Locked segments default to empty.");
             Expect(loaded.WidthMm == 7 && loaded.HeightMm == 8 && loaded.Separator == " " &&
                 loaded.PickHotkey == "F9", "New fields preserve existing settings.");
             Expect(loaded.SubjectHistory[1].Subject == "\u5e94\u6025\u7167\u660e  / B",
                 "Unicode and internal spaces survive serialization.");
+            settings.LockedSegments = 2;
+            settings.LockedFragments = new List<string> { "V2K-12", "0-10V" };
             settings.OcrLanguage = "";
             settings.Separator = "";
             Expect(settings.Save(path) && PluginSettings.Load(path).OcrLanguage == "" &&
                 PluginSettings.Load(path).Separator == "", "Atomic replacement preserves explicit auto and empty separator.");
+            loaded = PluginSettings.Load(path);
+            Expect(loaded.LockedSegments == 2 && loaded.LockedFragments.Count == 2 &&
+                loaded.LockedFragments[1] == "0-10V", "Locked segments survive disk reload.");
             Expect(Directory.GetFiles(directory, "*.tmp").Length == 0, "Successful save leaves no temp file.");
             File.WriteAllText(path, "<CircleStampSettings><WidthMm>4</WidthMm><Separator>-</Separator></CircleStampSettings>");
             loaded = PluginSettings.Load(path);
@@ -211,7 +218,7 @@ internal static class HistoryPreferenceTests
             Expect(panel.IsTextInputFocused(), "History search is protected from pick shortcuts.");
             grid.Focus();
             Expect(panel.IsTextInputFocused(), "Grid keyboard navigation is protected from pick shortcuts.");
-            Expect(grid.Height >= 160 && grid.Width > 400, "History fits the compact panel.");
+            Expect(grid.Height >= 100 && grid.Width > 400, "History fits the compact panel.");
 
             int ocrReviewChanges = 0;
             panel.OcrReviewChanged += delegate { ocrReviewChanges++; };

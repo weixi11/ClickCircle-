@@ -129,13 +129,19 @@ internal static class PanelSizeTests
             ComboBox separator = (ComboBox)panel.Controls.Find("Separator", true)[0];
             DataGridView grid = (DataGridView)panel.Controls.Find("SubjectHistory", true)[0];
 
-            NumericUpDown[] numbers = new NumericUpDown[2];
+            NumericUpDown[] numbers = new NumericUpDown[4];
             int found = 0;
             Collect<NumericUpDown>(panel, ref numbers, ref found);
-            Expect(found == 2, "两个尺寸输入框都在，实际 " + found);
-
-            NumericUpDown width = numbers[0];
-            NumericUpDown height = numbers[1];
+            Expect(found == 3, "尺寸两个输入框加锁定段数输入框都在，实际 " + found);
+            NumericUpDown width = null;
+            NumericUpDown height = null;
+            foreach (NumericUpDown input in numbers)
+            {
+                if (input == null) continue;
+                if (input.AccessibleName == "椭圆宽度，毫米") width = input;
+                if (input.AccessibleName == "椭圆高度，毫米") height = input;
+            }
+            Expect(width != null && height != null, "两个尺寸输入框都能找到");
             Expect(width.Width == height.Width, "宽高输入框等宽，实际 " +
                 width.Width + " / " + height.Width);
             Expect(width.Width <= 140, "尺寸输入框不再拉满整行，实际 " + width.Width);
@@ -145,11 +151,15 @@ internal static class PanelSizeTests
                 "分隔符下拉框宽度收敛，实际 " + separator.Width);
             Expect(panel.Controls.Count > 0 && panel.Width >= StampPanel.MinimumPanelWidth,
                 "面板整体不小于下限");
+            NumericUpDown lockInput = (NumericUpDown)panel.Controls.Find("LockedSegments", true)[0];
+            Expect(lockInput != null && lockInput.Minimum == 0 && lockInput.Maximum >= 10,
+                "锁定段数输入框在主页且范围合理");
+            Expect(lockInput.Width <= 90, "锁定段数输入框不拉满整行，实际 " + lockInput.Width);
 
             panel.CreateControl();
             panel.Show();
             Application.DoEvents();
-            Expect(grid.Height >= 160, "历史表格在默认尺寸下有可用高度，实际 " + grid.Height);
+            Expect(grid.Height >= 100, "历史表格在默认尺寸下有可用高度，实际 " + grid.Height);
             Expect(grid.RowTemplate.Height >= panel.Font.Height + 10,
                 "表格行高跟随字号，实际 " + grid.RowTemplate.Height +
                 " 字体高 " + panel.Font.Height);

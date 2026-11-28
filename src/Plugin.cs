@@ -230,7 +230,7 @@ namespace ClickCircle
         public string Name { get { return "取字连续圈注"; } }
         public string CopyrightInfo { get { return "ClickCircle 2026"; } }
         /// <summary>插件版本号，面板标题显示同一数值。</summary>
-        private const uint PluginVersionNumber = (1U << 16) | (8U << 8) | 9U;
+        private const uint PluginVersionNumber = (1U << 16) | (8U << 8) | 10U;
 
         public uint version { get { return PluginVersionNumber; } }
 
@@ -266,6 +266,7 @@ namespace ClickCircle
             Panel.OcrLanguageChanged += SaveSettings;
             Panel.OcrReviewChanged += SaveSettings;
             Panel.HistoryVisibilityChanged += SaveSettings;
+            Panel.LockedSegmentsChanged += SaveSettings;
             Panel.PanelSizeChanged += SaveSettings;
             Panel.HotkeyChanged += OnHotkeyChanged;
             Panel.HotkeyCaptureStarted += OnHotkeyCaptureStarted;
@@ -642,12 +643,10 @@ namespace ClickCircle
                 if (document.ActiveTool == null || document.ActiveTool.ID != tool.ID)
                     previousTools[document.ID] = document.ActiveTool == null
                         ? Instance.Str2ID("tool.hand", false) : document.ActiveTool.ID;
-                // 取字状态下再按 Q 或再点“取文字”＝重新取字：清空已取片段和主题，从第一段重新累积。
+                // 取字状态下再按 Q 或再点“取文字”＝重新取字：有锁定段时保留前 N 段，否则清空重来。
                 bool restartingPick = next == StampMode.Picking && mode == StampMode.Picking;
                 if (next == StampMode.Picking)
-                    Panel.ResetPickedFragments();
-                if (restartingPick)
-                    Panel.Subject = String.Empty;
+                    Panel.BeginPickingRound(restartingPick);
                 SetMode(next, next == StampMode.Picking ? PickingHint : null);
                 changingTool = true;
                 try { document.ActivateTool(tool.ID); }
@@ -655,7 +654,9 @@ namespace ClickCircle
                 if (document.ActiveView != null && document.ActiveView.PagesView != null)
                     document.ActiveView.PagesView.Obj.SetInputFocus(false);
                 // 重新取字给个即时反馈：否则只清了主题，用户会以为快捷键没响应。
-                if (restartingPick)
+                if (next == StampMode.Picking && Panel.LockedSegments > 0)
+                    Panel.ShowPickHint("已锁定 " + Panel.LockedSegments + " 段，点击文字继续", 0);
+                else if (restartingPick)
                     Panel.ShowPickHint("重新取字，点击文字继续", 0);
                 Log(next + " doc=" + boundDocument);
                 if (restartingPick)

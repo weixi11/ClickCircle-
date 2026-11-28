@@ -51,6 +51,8 @@ namespace ClickCircle
         private Label updateStatusLabel;
         private CheckBox ocrReviewCheckBox;
         private CheckBox historyCheckBox;
+        private NumericUpDown lockInput;
+        private List<string> lockedFragments = new List<string>();
         private TableLayoutPanel mainLayout;
         private TableLayoutPanel historyLayout;
         private bool showHistory = true;
@@ -78,6 +80,7 @@ namespace ClickCircle
         public event Action OcrLanguageChanged;
         public event Action OcrReviewChanged;
         public event Action HistoryVisibilityChanged;
+        public event Action LockedSegmentsChanged;
         public event Action CheckUpdateRequested;
         public event Action StyleEditRequested;
 
@@ -92,8 +95,8 @@ namespace ClickCircle
         public const int MinimumPanelWidth = 440;
         public const int MinimumPanelHeight = 380;
 
-        /// <summary>关掉主题历史后的紧凑客户区高度（只留主题、按钮、状态行）。</summary>
-        public const int CompactPanelHeight = 190;
+        /// <summary>关掉主题历史后的紧凑客户区高度（只留主题、按钮、锁定段数、状态行）。</summary>
+        public const int CompactPanelHeight = 230;
 
         public StampPanel() : this(new PluginSettings())
         {
@@ -134,12 +137,13 @@ namespace ClickCircle
             Controls.Add(mainPage);
 
             TableLayoutPanel layout = new TableLayoutPanel {
-                Dock = DockStyle.Fill, ColumnCount = 1, RowCount = 4, Margin = Padding.Empty,
+                Dock = DockStyle.Fill, ColumnCount = 1, RowCount = 5, Margin = Padding.Empty,
                 BackColor = PageBack
             };
             mainLayout = layout;
             layout.RowStyles.Add(new RowStyle(SizeType.Absolute, 56F));
             layout.RowStyles.Add(new RowStyle(SizeType.Absolute, 56F));
+            layout.RowStyles.Add(new RowStyle(SizeType.Absolute, 40F));
             layout.RowStyles.Add(new RowStyle(SizeType.Absolute, 44F));
             layout.RowStyles.Add(new RowStyle(SizeType.Percent, 100F));
             mainPage.Controls.Add(layout);
@@ -193,6 +197,32 @@ namespace ClickCircle
             commandsRow.Controls.Add(pauseButton, 3, 0);
             layout.Controls.Add(commandsRow, 0, 1);
 
+            TableLayoutPanel lockRow = new TableLayoutPanel {
+                Dock = DockStyle.Fill, ColumnCount = 4, RowCount = 1, Margin = Padding.Empty,
+                BackColor = PageBack
+            };
+            lockRow.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, 72F));
+            lockRow.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, 64F));
+            lockRow.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, 10F));
+            lockRow.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100F));
+            Label lockLabel = MakeLabel("锁定段数", "锁定前几段不动");
+            lockLabel.ForeColor = TextColor;
+            lockInput = new NumericUpDown {
+                Name = "LockedSegments", AccessibleName = "锁定前几段", Dock = DockStyle.Fill,
+                Minimum = 0, Maximum = 20, Value = 0, TextAlign = HorizontalAlignment.Center,
+                Margin = new Padding(0, 8, 0, 8), TabIndex = 3
+            };
+            Label lockHint = MakeLabel("锁定后重新取字时前 N 段保持不变", "锁定段数说明");
+            lockHint.ForeColor = Muted;
+            lockHint.Font = new Font(Font.FontFamily, 8.5F);
+            lockInput.ValueChanged += delegate {
+                if (!applyingSettings) ApplyLockedSegments((int)lockInput.Value, true);
+            };
+            lockRow.Controls.Add(lockLabel, 0, 0);
+            lockRow.Controls.Add(lockInput, 1, 0);
+            lockRow.Controls.Add(new Label { Text = String.Empty, Dock = DockStyle.Fill }, 2, 0);
+            lockRow.Controls.Add(lockHint, 3, 0);
+            layout.Controls.Add(lockRow, 0, 2);
             Panel statusPanel = new Panel {
                 Dock = DockStyle.Fill, BackColor = Color.FromArgb(238, 242, 248),
                 Margin = new Padding(0, 4, 0, 4)
@@ -240,7 +270,7 @@ namespace ClickCircle
             statusRow.Controls.Add(summaryLabel, 4, 0);
             statusRow.Controls.Add(settingsButton, 5, 0);
             statusPanel.Controls.Add(statusRow);
-            layout.Controls.Add(statusPanel, 0, 2);
+            layout.Controls.Add(statusPanel, 0, 3);
 
             historyLayout = new TableLayoutPanel {
                 Dock = DockStyle.Fill, ColumnCount = 1, RowCount = 3, Margin = Padding.Empty,
@@ -322,7 +352,7 @@ namespace ClickCircle
             };
             historyGrid.CellValueChanged += HistoryPinChanged;
             historyLayout.Controls.Add(historyGrid, 0, 2);
-            layout.Controls.Add(historyLayout, 0, 3);
+            layout.Controls.Add(historyLayout, 0, 4);
         }
 
         private void BuildSettingsPage()
@@ -990,6 +1020,78 @@ namespace ClickCircle
             get { return showHistory; }
         }
 
+        /// <summary>当前锁定的段数：重新取字时这些片段保留，新取的字接在后面。</summary>
+        public int LockedSegments
+        {
+            get { return lockedFragments.Count; }
+        }
+
+        /// <summary>锁定/解锁前 N 段；N 超过已取段数时按实际段数锁定。</summary>
+        private void ApplyLockedSegments(int requested, bool fromUser)
+        {
+            int count = Math.Max(0, Math.Min(20, requested));
+            lockedFragments = new List<string>();
+            if (count > 0 && pickedFragments != null && pickedFragments.Length > 0)
+            {
+                count = Math.Min(count, pickedFragments.Length);
+                for (int i = 0; i < count; ++i)
+                    lockedFragments.Add(pickedFragments[i]);
+            }
+            else
+            {
+                count = 0;
+            }
+            if (lockInput != null && (int)lockInput.Value != count)
+            {
+                applyingSettings = true;
+                try { lockInput.Value = count; }
+                finally { applyingSettings = false; }
+            }
+            if (lockedFragments.Count > 0)
+            {
+                pickedFragments = lockedFragments.ToArray();
+                RecomposeSubject();
+            }
+            if (fromUser && !applyingSettings)
+                Raise(LockedSegmentsChanged);
+        }
+
+        /// <summary>从设置恢复锁定段数与片段（不改变当前主题）。</summary>
+        private void ApplyLockedSettings(int count, List<string> fragments)
+        {
+            lockedFragments = new List<string>();
+            if (fragments != null)
+            {
+                foreach (string value in fragments)
+                {
+                    if (lockedFragments.Count >= 20) break;
+                    string trimmed = (value ?? String.Empty).Trim();
+                    if (trimmed.Length > 0) lockedFragments.Add(trimmed);
+                }
+            }
+            if (count >= 0 && count < lockedFragments.Count)
+                lockedFragments.RemoveRange(count, lockedFragments.Count - count);
+            if (lockInput != null)
+            {
+                applyingSettings = true;
+                try { lockInput.Value = lockedFragments.Count; }
+                finally { applyingSettings = false; }
+            }
+        }
+
+        /// <summary>开始新一轮取字：有锁定片段时用它们起步（主题也回到锁定片段），否则按原逻辑清空。</summary>
+        public void BeginPickingRound(bool restartingPick)
+        {
+            if (lockedFragments.Count > 0)
+            {
+                pickedFragments = lockedFragments.ToArray();
+                RecomposeSubject();
+                return;
+            }
+            pickedFragments = null;
+            if (restartingPick)
+                Subject = String.Empty;
+        }
         /// <summary>显示/隐藏主题历史：隐藏时把面板收成紧凑高度，打开时恢复原高度。</summary>
         private void ApplyHistoryVisibility(bool show, bool restoreHeight, int requestedHeight = -1)
         {
@@ -1055,6 +1157,7 @@ namespace ClickCircle
                     requestedHeight);
                 historyHiddenHeight = -1;
                 ApplyHistoryVisibility(settings.ShowHistory, false, requestedHeight);
+                ApplyLockedSettings(settings.LockedSegments, settings.LockedFragments);
             }
             finally
             {
@@ -1078,6 +1181,8 @@ namespace ClickCircle
                 OcrLanguage = OcrLanguage,
                 ShowOcrReview = ShowOcrReview,
                 ShowHistory = showHistory,
+                LockedSegments = lockedFragments.Count,
+                LockedFragments = new List<string>(lockedFragments),
                 Style = (Style ?? AnnotStyle.Default()).Clone(),
                 SubjectHistory = history.Export(),
                 PanelWidth = ClientSize.Width,
@@ -1379,6 +1484,8 @@ namespace ClickCircle
             OcrLanguage = String.Empty;
             ShowOcrReview = false;
             ShowHistory = false;
+            LockedSegments = 0;
+            LockedFragments = new List<string>();
             SubjectHistory = new List<SubjectHistoryEntry>();
             PanelWidth = StampPanel.DefaultPanelWidth;
             PanelHeight = StampPanel.DefaultPanelHeight;
@@ -1398,6 +1505,12 @@ namespace ClickCircle
 
         /// <summary>是否显示主题历史；默认开，旧 settings.xml 没有这一项也按开处理。</summary>
         public bool ShowHistory { get; set; }
+
+        /// <summary>锁定的段数：重新取字时这些片段保留。</summary>
+        public int LockedSegments { get; set; }
+
+        /// <summary>被锁定的片段内容（与 LockedSegments 一起保存，重开面板后仍可沿用）。</summary>
+        public List<string> LockedFragments { get; set; }
         public List<SubjectHistoryEntry> SubjectHistory { get; set; }
 
         /// <summary>新标注自动套用的样式（字段/颜色/边框/测量参数）。</summary>
@@ -1433,6 +1546,8 @@ namespace ClickCircle
                     settings.OcrLanguage = OcrService.NormalizeLanguagePreference(settings.OcrLanguage);
                     settings.Style = NormalizeStyle(settings.Style);
                     settings.SubjectHistory = new SubjectHistory(settings.SubjectHistory).Export();
+                    settings.LockedSegments = Math.Max(0, Math.Min(20, settings.LockedSegments));
+                    if (settings.LockedFragments == null) settings.LockedFragments = new List<string>();
                     settings.PanelWidth = ClampPanelWidth(settings.PanelWidth, StampPanel.DefaultPanelWidth);
                     settings.PanelHeight = ClampPanelHeight(settings.PanelHeight, StampPanel.DefaultPanelHeight);
                     return settings;
@@ -1459,6 +1574,8 @@ namespace ClickCircle
                     OcrLanguage = OcrService.NormalizeLanguagePreference(OcrLanguage),
                     ShowOcrReview = ShowOcrReview,
                     ShowHistory = ShowHistory,
+                    LockedSegments = LockedSegments,
+                    LockedFragments = LockedFragments == null ? new List<string>() : new List<string>(LockedFragments),
                     Style = NormalizeStyle(Style),
                     SubjectHistory = new SubjectHistory(SubjectHistory).Export(),
                     PanelWidth = ClampPanelWidth(PanelWidth, StampPanel.DefaultPanelWidth),

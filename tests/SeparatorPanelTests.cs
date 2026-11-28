@@ -86,6 +86,75 @@ internal static class SeparatorPanelTests
         }
     }
 
+    private static void CheckLock()
+    {
+        using (StampPanel panel = new StampPanel(new PluginSettings { ShowHistory = true }))
+        {
+            NumericUpDown lockInput = (NumericUpDown)panel.Controls.Find("LockedSegments", true)[0];
+            Expect(lockInput.Value == 0 && panel.LockedSegments == 0, "默认不锁定");
+            panel.SetPickedFragments(new[] { "V2K-12", "0-10V" });
+            ExpectSubject(panel, "V2K-12/0-10V", "先取两段");
+            lockInput.Value = 2;
+            Expect(panel.LockedSegments == 2 && lockInput.Value == 2, "锁定两段后段数为 2");
+            ExpectSubject(panel, "V2K-12/0-10V", "锁定不改变当前主题");
+
+            panel.BeginPickingRound(true);
+            Expect(panel.PickedFragmentCount == 2, "重新取字从锁定两段起步");
+            ExpectSubject(panel, "V2K-12/0-10V", "重新取字保留锁定主题");
+            panel.AppendPickedFragments(new[] { "V2K-11" });
+            ExpectSubject(panel, "V2K-12/0-10V/V2K-11", "新取的段接在锁定段后面");
+
+            panel.BeginPickingRound(true);
+            Expect(panel.PickedFragmentCount == 2, "再次重新取字只保留锁定段");
+            ExpectSubject(panel, "V2K-12/0-10V", "再次重新取字回到锁定主题");
+
+            panel.Separator = "-";
+            ExpectSubject(panel, "V2K-12-0-10V", "锁定主题跟随分隔符重组");
+            panel.Separator = "/";
+
+            lockInput.Value = 1;
+            Expect(panel.LockedSegments == 1, "改锁定段数为 1 立即生效");
+            ExpectSubject(panel, "V2K-12", "锁定段裁剪当前主题");
+            panel.BeginPickingRound(true);
+            panel.AppendPickedFragments(new[] { "0-10V" });
+            ExpectSubject(panel, "V2K-12/0-10V", "锁定一段后只取新段");
+
+            panel.SetPickedFragments(new[] { "A", "B", "C" });
+            lockInput.Value = 5;
+            Expect(panel.LockedSegments == 3 && lockInput.Value == 3, "锁定段数超过已取段数时按实际段数");
+            ExpectSubject(panel, "A/B/C", "超量锁定后主题保留全部已取段");
+
+            lockInput.Value = 0;
+            Expect(panel.LockedSegments == 0, "解锁后不再锁定");
+            panel.BeginPickingRound(true);
+            Expect(panel.PickedFragmentCount == 0 && panel.Subject == String.Empty,
+                "解锁后重新取字按原来的清空逻辑");
+
+            PluginSettings saved = panel.GetSettings();
+            using (StampPanel reopened = new StampPanel(saved))
+            {
+                Expect(reopened.LockedSegments == 0, "锁定段数随设置保存（解锁后为 0）");
+            }
+        }
+
+        using (StampPanel panel = new StampPanel())
+        {
+            NumericUpDown lockInput = (NumericUpDown)panel.Controls.Find("LockedSegments", true)[0];
+            lockInput.Value = 2;
+            Expect(panel.LockedSegments == 0, "没有已取段时不锁定空内容");
+            panel.SetPickedFragments(new[] { "V2K-12", "0-10V" });
+            lockInput.Value = 2;
+            PluginSettings saved = panel.GetSettings();
+            Expect(saved.LockedSegments == 2 && saved.LockedFragments.Count == 2 &&
+                saved.LockedFragments[0] == "V2K-12", "锁定片段随设置保存");
+            using (StampPanel reopened = new StampPanel(saved))
+            {
+                Expect(reopened.LockedSegments == 2, "重开面板恢复锁定段数");
+                reopened.BeginPickingRound(false);
+                ExpectSubject(reopened, "V2K-12/0-10V", "重开面板后重新取字仍从锁定段起步");
+            }
+        }
+    }
     private static void CheckControlAndEvents()
     {
         using (StampPanel panel = new StampPanel())
@@ -179,6 +248,7 @@ internal static class SeparatorPanelTests
         {
             CheckComposition();
             CheckControlAndEvents();
+            CheckLock();
             CheckSettings();
             Console.WriteLine("SeparatorPanel: " + checkedCases + " cases passed.");
             return 0;
