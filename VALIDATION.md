@@ -20,9 +20,11 @@
 - 未覆盖：锁定只作用于“取字片段”，手动改主题文字不会自动跟随锁定；锁定内容变化不会回写已有椭圆的 Subject。
 ### 发布记录（1.8.10）
 
-- 仓库：`https://github.com/weixi11/ClickCircle-`（公开），提交 `122e034`（“1.8.10: 锁定前 N 段，重新取字时保持不变”），标签 `v1.8.10`。
-- 远端校验（2026-11-28 10:30）：`raw.githubusercontent.com/weixi11/ClickCircle-/main/version.txt` 返回 `v1.8.10`；`v1.8.10/dist/` 三个文件下载后 SHA-256 与本地 `dist` 完全一致：Core `D9550B6F…`（148992 字节，完整值见本地 dist 校验输出）、pvp 与 PDFXEdit.dll 同步一致。
-- 本机升级方式：用户当前 1.8.7（或 1.8.9）：保存文档 → 设置 → 检查更新 → `v1.8.10`；升级后主页会多出“锁定段数”一行。
+- 仓库：`https://github.com/weixi11/ClickCircle-`（公开），发布提交 `8ac36ea`（“1.8.10: 发布最终构建（dist 对齐 148992 字节版本）”），标签 `v1.8.10`（重建后指向该提交；首次推送的标签指向未对齐 dist 的构建，已 `push --force` 修正）。
+- 远端校验（2026-11-28 10:33，GitHub API / git 对象）：`v1.8.10` 标签树里的 `dist/ClickCircle.Core.dll` blob = `57a1d95b3ad9e2de26dd4e48f7c5d7f1c4ee5998`、**148992 字节**，与本地 `dist` 一致；pvp `2cf96d3b…`、PDFXEdit.dll `19c1c0bb…` 同样与本地一致。`raw.githubusercontent.com` 的 CDN 缓存可能滞后几分钟，以 API/git 对象校验为准。
+- `main/version.txt` 返回 `v1.8.10`。
+- 本地 `dist` SHA-256：Core `C7A7FBBF89E153F9794A726851E59A44140C6FB38130D873A62E108B3B2D2D64`（148992 字节）、pvp `E208C718F25714A4CACF76388A0E15FE808E0EB198BEC34DC2D9C7A91B85C238`（3072）、PDFXEdit.dll `2C8C6BA1F29654898AFBA5F7C566F9853E4411E6E05F4B963C93AC2751E208C1`（868864）。
+- 本机升级方式：用户当前 1.8.7/1.8.9：保存文档 → 设置 → 检查更新 → `v1.8.10`；升级后主页多出“锁定段数”一行。
 - 回滚：`output\gui-test\host-lock-1810\core-1.8.9\`（1.8.9）。
 ## 早前（1.8.9）：放置圈注时也在鼠标旁显示提示
 
