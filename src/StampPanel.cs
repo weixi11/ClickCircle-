@@ -327,7 +327,9 @@ namespace ClickCircle
 
         private void BuildSettingsPage()
         {
-            settingsPage = new Panel { Dock = DockStyle.Fill, BackColor = PageBack, Visible = false };
+            settingsPage = new Panel {
+                Dock = DockStyle.Fill, BackColor = PageBack, Visible = false, AutoScroll = true
+            };
             Controls.Add(settingsPage);
 
             TableLayoutPanel layout = new TableLayoutPanel {
@@ -583,6 +585,26 @@ namespace ClickCircle
         {
             if (settingsPage == null || mainPage == null)
                 return;
+            Size border = BorderSize();
+            if (show && !showHistory && ClientSize.Height <= CompactPanelHeight + 40)
+            {
+                // 打开设置页时把紧凑面板临时撑回设置页需要的高度，避免设置项被截断。
+                MinimumSize = new Size(MinimumPanelWidth + border.Width,
+                    MinimumPanelHeight + border.Height);
+                int target = historyHiddenHeight > CompactPanelHeight + 40
+                    ? historyHiddenHeight
+                    : DefaultPanelHeight;
+                ClientSize = new Size(ClientSize.Width, Math.Max(MinimumPanelHeight, target));
+            }
+            else if (!show && !showHistory && ClientSize.Height > CompactPanelHeight + 40)
+            {
+                // 返回主页面且历史关着：重新收成紧凑高度。
+                if (ClientSize.Height > CompactPanelHeight + 40)
+                    historyHiddenHeight = ClientSize.Height;
+                MinimumSize = new Size(MinimumPanelWidth + border.Width,
+                    CompactPanelHeight + border.Height);
+                ClientSize = new Size(ClientSize.Width, CompactPanelHeight);
+            }
             settingsPage.Visible = show;
             mainPage.Visible = !show;
             UpdateTitle();
@@ -993,9 +1015,14 @@ namespace ClickCircle
                 int height = requestedHeight > 0 ? requestedHeight : ClientSize.Height;
                 if (height > CompactPanelHeight + 40)
                     historyHiddenHeight = height;
-                MinimumSize = new Size(MinimumPanelWidth + border.Width,
-                    CompactPanelHeight + border.Height);
-                ClientSize = new Size(ClientSize.Width, CompactPanelHeight);
+                // 设置页还开着就先不缩窗口，等返回主页面再收，免得把设置页截断。
+                if (settingsPage == null || !settingsPage.Visible ||
+                    ClientSize.Height <= CompactPanelHeight + 40)
+                {
+                    MinimumSize = new Size(MinimumPanelWidth + border.Width,
+                        CompactPanelHeight + border.Height);
+                    ClientSize = new Size(ClientSize.Width, CompactPanelHeight);
+                }
             }
             RefreshHistory();
         }

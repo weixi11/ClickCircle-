@@ -232,6 +232,18 @@ internal static class HistoryPreferenceTests
             panel.RememberCurrentSubject();
             Expect(panel.GetSettings().SubjectHistory.Count == 1,
                 "History records again after re-enabling.");
+
+            Call(panel, "ShowSettings", true);
+            showHistory.Checked = false;
+            Expect(panel.ClientSize.Height >= StampPanel.MinimumPanelHeight,
+                "Turning history off inside the settings page keeps the panel tall, actual " +
+                panel.ClientSize.Height);
+            Expect(panel.ClientSize.Height > StampPanel.CompactPanelHeight + 40,
+                "The open settings page is not squeezed into the compact height, actual " +
+                panel.ClientSize.Height);
+            Call(panel, "ShowSettings", false);
+            Expect(panel.ClientSize.Height <= StampPanel.CompactPanelHeight + 2,
+                "Returning to the main page shrinks the panel again, actual " + panel.ClientSize.Height);
             panel.Hide();
         }
     }
