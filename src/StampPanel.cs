@@ -1145,8 +1145,8 @@ namespace ClickCircle
                 historyCheckBox.Checked = show;
             if (historyLayout != null)
                 historyLayout.Visible = show;
-            if (mainLayout != null && mainLayout.RowStyles.Count > 3)
-                mainLayout.RowStyles[3] = show
+            if (mainLayout != null && mainLayout.RowStyles.Count > 4)
+                mainLayout.RowStyles[4] = show
                     ? new RowStyle(SizeType.Percent, 100F)
                     : new RowStyle(SizeType.Absolute, 0F);
             Size border = BorderSize();

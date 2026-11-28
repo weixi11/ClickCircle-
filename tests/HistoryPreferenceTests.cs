@@ -147,6 +147,19 @@ internal static class HistoryPreferenceTests
         }
     }
 
+    private static Button FindButton(Control root, string text)
+    {
+        foreach (Control child in root.Controls)
+        {
+            Button button = child as Button;
+            if (button != null && button.Text == text)
+                return button;
+            Button nested = FindButton(child, text);
+            if (nested != null)
+                return nested;
+        }
+        return null;
+    }
     private static void Defaults()
     {
         using (StampPanel panel = new StampPanel())
@@ -162,6 +175,16 @@ internal static class HistoryPreferenceTests
             PluginSettings defaults = panel.GetSettings();
             Expect(!defaults.ShowOcrReview && !defaults.ShowHistory,
                 "GetSettings keeps both switches off.");
+
+            // 1.8.10 把主页加成 5 行后，历史关着时状态行被误当历史行置零，设置入口消失（1.8.12 修）。
+            panel.CreateControl();
+            panel.Show();
+            Application.DoEvents();
+            Button settingsButton = FindButton(panel, "设置");
+            Expect(settingsButton != null && settingsButton.Visible && settingsButton.Height > 20 &&
+                settingsButton.Parent != null && settingsButton.Parent.Visible,
+                "历史关闭时状态行与设置入口仍然可见");
+            panel.Hide();
         }
     }
     private static void Panel()
