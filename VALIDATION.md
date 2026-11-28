@@ -19,6 +19,12 @@
   - 报告：`output\gui-test\host-history-settings-187\*\*-report.txt`。
 - 发布（1.8.7）：已推送到 GitHub `weixi11/ClickCircle-` 的 `main`（`version.txt` = `v1.8.7`）并打标签 `v1.8.7`；远端校验与提交号见下方“发布记录（1.8.7）”。
 - 未覆盖：设置页打开期间用户手动拖动改变高度后返回主页面，会按拖动后的高度作为恢复高度；UIA 无法自动点“返回主页面”链接。
+### 发布记录（1.8.7）
+
+- 仓库：`https://github.com/weixi11/ClickCircle-`（公开），提交 `cb0616a`（“1.8.7: 历史关掉后打开设置页不再被截断”），标签 `v1.8.7`。
+- 远端校验（2026-11-28 09:21）：`raw.githubusercontent.com/weixi11/ClickCircle-/main/version.txt` 返回 `v1.8.7`；`v1.8.7/dist/` 三个文件下载后 SHA-256 与本地 `dist` 完全一致：Core `CEE4ABE3A4999215B9A31AB722C8D1FF36EB61C8D248DE7DECE54FF86AE70BD0`（145920 字节）、pvp `79C724F6C782C57789DC1139BA891AED98381DC2F3A5550EF23A435F81643D7A`（3072）、PDFXEdit.dll `2C8C6BA1F29654898AFBA5F7C566F9853E4411E6E05F4B963C93AC2751E208C1`（868864）。
+- 本机升级方式：用户当前 1.8.6：保存文档 → 设置 → 检查更新 → `v1.8.7`；确认后 helper 自动关闭编辑器、备份、替换并重启，失败回滚。
+- 回滚：`output\gui-test\host-history-settings-187\core-1.8.6\`（1.8.6）、`output\gui-test\host-history-186\core-1.8.5` 不存在时可用 `output\gui-test\host-ocr-review\core-1.8.4\`（1.8.4）。
 ## 早前（1.8.6）：设置页新增“显示主题历史”开关
 
 - 需求（用户截图，蓝框圈住面板里的“主题历史”区域）：把历史主题关掉，在设置里弄个开关。
